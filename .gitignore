@@ -1,3 +1,10 @@
+# My files
+auth.json
+old/
+Pipfile
+Pipfile.lock
+data/linkedin_jobs.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
