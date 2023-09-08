@@ -2,13 +2,78 @@ import spacy
 from spacy import displacy
 from spacy.matcher import Matcher
 from spacy.language import Language
-import json
-import re
+import json, re, logging, configparser
 from modules.helper_functions import translate_description, pre_process_description, tokenize_words, check_similarity
+
+logger = logging.getLogger('check apply module')
 
 # Load the entity data
 with open('./data/data.json', 'r') as json_file:
     json_data = json.load(json_file)
+
+# Load parameters from config file
+config_obj = configparser.ConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
+config_obj.read("./configfile.ini")
+
+def load_user_words_to_check():
+    """Function that loads the user options regarding the words to check for the language
+    
+    Returns
+    -------
+        possible_languages : list
+            List of languages that you speak
+        adj_to_check, noun_to_check, propn_to_check, verb_to_check, adv_to_check: list
+            List of words to check if they are in the document and their similarity with doc words
+        similarity_threshold : float
+            Threshold to decide if the words are similar or not"""
+    
+    # Languages the user speaks
+    possible_languages = config_obj.getlist('languages_user_speak_fluently', 'languages')
+
+    # Words to check in the languages that you dont speak
+    adj_to_check = config_obj.getlist('words_check_language_check', 'adj_to_check')
+    noun_to_check = config_obj.getlist('words_check_language_check', 'noun_to_check')
+    propn_to_check = config_obj.getlist('words_check_language_check', 'propn_to_check')
+    verb_to_check = config_obj.getlist('words_check_language_check', 'verb_to_check')
+    adv_to_check = config_obj.getlist('words_check_language_check', 'adv_to_check')
+    similarity_threshold = float(config_obj["words_check_language_check"]["similarity_threshold"])
+
+    return possible_languages, adj_to_check, noun_to_check, propn_to_check, verb_to_check, adv_to_check, similarity_threshold
+
+def load_user_experience_to_check():
+    """Function that loads the user options regarding the experience to check 
+    
+    Returns
+    -------
+        seniority_do_not_apply : list
+            List of seniority words that can be present in the description not to apply for the job
+        experience_max_year_threshold : int
+            Max threshold of years to apply or not to the job"""
+    
+    # Experience parameters
+    seniority_do_not_apply = config_obj.getlist('experience', 'seniority_do_not_apply')
+    experience_max_year_threshold = int(config_obj["experience"]["experience_max_year_threshold"])
+    
+    return seniority_do_not_apply, experience_max_year_threshold
+
+def load_user_technologies_to_check():
+    """Function that loads the user options regarding the technologies to check 
+    
+    Returns
+    -------
+        entities_do_not_apply : list
+            List of entities that you dont want to apply. Example: "Automation Server", "In-Memory Data Store", etc
+        programming_languages_apply : list
+            List of programming languages that you know. Example: "python", "dax", etc
+        backend_frameworks_apply : list
+            List of backend frameworks that you know: Example: "django", "flask" """
+    
+    # Technologies parameters
+    entities_do_not_apply = config_obj.getlist('technologies', 'entities_do_not_apply')
+    programming_languages_apply = config_obj.getlist('technologies', 'programming_languages_apply') 
+    backend_frameworks_apply = config_obj.getlist('technologies', 'backend_frameworks_apply')
+
+    return entities_do_not_apply, programming_languages_apply, backend_frameworks_apply
 
 def pre_process_text(description):
     """Function to process the description
@@ -26,6 +91,40 @@ def pre_process_text(description):
     description = translate_description(description)
     description = pre_process_description(description)
     return description
+
+def transform_words_to_num(span_text):
+    """Function that transforms a word number in an int
+    
+    Parameters
+    ----------
+        span_text : str
+            Span text that has a word number
+
+    Returns
+    -------
+        integer : int
+            The integer
+    """
+    if 'one' in span_text:
+        return 1
+    if 'two' in span_text:
+        return 2
+    if 'three' in span_text:
+        return 3
+    if 'four' in span_text:
+        return 4
+    if 'five' in span_text:
+        return 5
+    if 'six' in span_text:
+        return 6
+    if 'seven' in span_text:
+        return 7
+    if 'eight' in span_text:
+        return 8
+    if 'nine' in span_text:
+        return 9
+    if 'ten' in span_text:
+        return 10
 
 def create_nlp_model():
     """Function that creates the nlp model.
@@ -62,15 +161,7 @@ def create_nlp_model():
     
     return nlp
 
-def check_language_requirement(doc,
-                               nlp,
-                               possible_languages,
-                               adj_to_check,
-                               noun_to_check,
-                               propn_to_check,
-                               verb_to_check,
-                               adv_to_check,
-                               similarity_threshold=0.7):
+def check_language_requirement(doc, nlp):
     
     """Function to check the language requirement.
     
@@ -80,22 +171,20 @@ def check_language_requirement(doc,
             Description to check in spacy doc type
         nlp : spacy nlp model
             Spacy nlp model to be used
-        possible_languages : list
-            List of languages that you speak
-        adj_to_check, noun_to_check, propn_to_check, verb_to_check, adv_to_check: list
-            List of words to check if they are in the document and their similarity with doc words
-        similarity_threshold : float
-            Threshold to decide if the words are similar or not. Default 0.7
     Returns
     -------
-        apply : bool
+        apply_language : bool
             Boolean to apply or not according to language requirements
         reason_not_apply : str
             Reason not to apply if there is one
     """
     
-    apply = True
+    apply_language = True
     reason_not_apply = ""
+
+    # Load user options
+    possible_languages, adj_to_check, noun_to_check, propn_to_check, verb_to_check, \
+    adv_to_check, similarity_threshold = load_user_words_to_check()
 
     # Tokenize words to check
     adj_to_check = tokenize_words(adj_to_check, nlp)
@@ -129,22 +218,18 @@ def check_language_requirement(doc,
                 
                 # Calculate the max similarity. If similarity > similarity_threshold then do not apply
                 if max([sim_1, sim_2, sim_3, sim_4, sim_5]) > similarity_threshold:
-                    apply = False
+                    apply_language = False
                     reason_not_apply = "Language Requirement"
     
-    return apply, reason_not_apply
+    return apply_language, reason_not_apply
 
-def check_experience_requirement(doc, seniority_do_not_apply, experience_max_year_threshold, nlp):
+def check_experience_requirement(doc, nlp):
     """Function to check the experience or seniority required by the job description.
     
     Parameters
     ----------
         doc : spacy doc
             Description to check in spacy doc type
-        seniority_do_not_apply : list
-            List of seniority words that can be present in the description not to apply for the job
-        experience_max_year_threshold : int
-            Max threshold of years to apply or not to the job
         nlp : spacy_nlp_model
             Spacy custom model
     Returns
@@ -154,9 +239,11 @@ def check_experience_requirement(doc, seniority_do_not_apply, experience_max_yea
         reason_not_apply : str
             Reason not to apply if there is one
     """
-
-    apply = True
+    apply_experience = True
     reason_not_apply = ""
+
+    # Load the user options
+    seniority_do_not_apply, experience_max_year_threshold = load_user_experience_to_check()
 
     # Check the seniority
     for entity in doc.ents:
@@ -164,7 +251,7 @@ def check_experience_requirement(doc, seniority_do_not_apply, experience_max_yea
         if entity.label_ == "Role Experience":
             for seniority in seniority_do_not_apply:
                 if entity.text == seniority.lower():
-                    apply = False
+                    apply_experience = False
                     reason_not_apply = "Seniority"
 
     # Check the number of years of experience
@@ -189,19 +276,28 @@ def check_experience_requirement(doc, seniority_do_not_apply, experience_max_yea
                 string_id = nlp.vocab.strings[match_id]  # Get string representation
                 span = sentence[start:end]  # The matched span
                 number_years = re.findall(r'[0-9]+', span.text)
-
+                
+                # Check if the numbers are not written as words, otherwise transform
+                if not number_years:
+                    number_years = transform_words_to_num(span.text)
+                else:
+                    if len(number_years) == 1:
+                        number_years = int(number_years[0])
+                    else:
+                        list_range = [int(num) for num in number_years]
+                        string_id = "pattern_range"
+                
                 if string_id == "pattern_+" or string_id == "pattern_++":
-                    if (int(number_years[0]) + 1) > experience_max_year_threshold and int(number_years[0])<11: # The and is to avoid 100 years
+                    if (number_years + 1) > experience_max_year_threshold and number_years < 11: # The and is to avoid 100 years
                         apply_experience = False
                         reason_not_apply = "Experience"
                 
                 if string_id == "pattern_num":
-                    if int(number_years[0]) > experience_max_year_threshold and int(number_years[0])<11: # The and is to avoid 100 years
+                    if (number_years > experience_max_year_threshold) and number_years < 11: # The and is to avoid 100 years
+                        apply_experience = False
                         reason_not_apply = "Experience"
                 
                 if string_id == "pattern_range":
-                    list_range = [int(num) for num in number_years]
-
                     if min(list_range) > experience_max_year_threshold:
                         apply_experience = False
                         reason_not_apply = "Experience"
@@ -240,24 +336,18 @@ def check_experience_requirement(doc, seniority_do_not_apply, experience_max_yea
                         apply_experience = False
                         reason_not_apply = "Experience"
     
-    return apply, reason_not_apply
+    return apply_experience, reason_not_apply
 
-def check_technology_requirement(doc, entities_do_not_apply, programming_languages_apply, backend_frameworks_apply):
+def check_technology_requirement(doc):
     """Function to check the technologies required by the job description.
     
     Parameters
     ----------
         doc : spacy doc
             Description to check in spacy doc type
-        entities_do_not_apply : list
-            List of entities that you dont want to apply. Example: "Automation Server", "In-Memory Data Store", etc
-        programming_languages_apply : list
-            List of programming languages that you know. Example: "python", "dax", etc
-        backend_frameworks_apply : list
-            List of backend frameworks that you know: Example: "django", "flask"
     Returns
     -------
-        apply : bool
+        apply_technology : bool
             Boolean to apply or not according to experience requirements
         reason_not_apply : str
             Reason not to apply if there is one
@@ -267,11 +357,14 @@ def check_technology_requirement(doc, entities_do_not_apply, programming_languag
             List of entities, they will work as tags for the job description
     """
     
-    apply = True
+    apply_technology = True
     reason_not_apply = []
     list_technologies_no_knowledge = []
     list_possible_tags = []
     list_tags = []
+
+    # Load the user options 
+    entities_do_not_apply, programming_languages_apply, backend_frameworks_apply = load_user_technologies_to_check()
     
     # List of possible tags using the entities that you created
     for key in json_data:
@@ -287,7 +380,7 @@ def check_technology_requirement(doc, entities_do_not_apply, programming_languag
         
         # Check if the entity is one of the entities not to apply. Example "Automation Server", "In-Memory Data Store", etc
         if entity.label_ in entities_do_not_apply:
-            apply = False
+            apply_technology = False
             list_technologies_no_knowledge.append(entity.text) # Append list of technologies that you dont know
             reason_not_apply.append("Technology Group")
         
@@ -295,10 +388,6 @@ def check_technology_requirement(doc, entities_do_not_apply, programming_languag
         if entity.label_ == "Programming Language":
             if entity.text not in programming_languages_apply:
                 sentence = entity.sent # sentence where the programming language is
-            
-                # Check if there is an entity PERSON in the sentence (to avoid: luke skywalker – candidate consultant php | python)
-                if "PERSON" in [entity.label_ for entity in sentence.ents]:
-                   break
                 
                 # Check if any of the programming languages that you know is in the sentence, as there can be an or
                 # example: proficiency in programming languages such as python, java, or scala
@@ -306,14 +395,14 @@ def check_technology_requirement(doc, entities_do_not_apply, programming_languag
                     if prog_lang in sentence.text and "or" in sentence.text:
                         break
                     else:
-                        apply = False
+                        apply_technology = False
                         list_technologies_no_knowledge.append(entity.text) # Append list of technologies that you dont know
                         reason_not_apply.append("Programming Language")
 
         # Check if there are programming languages that you dont know
         if entity.label_ == "Backend Web Framework":
             if entity.text not in backend_frameworks_apply:
-                apply = False
+                apply_technology = False
                 list_technologies_no_knowledge.append(entity.text) # Append list of technologies that you dont know
                 reason_not_apply.append("Backend Web Framework")
     
@@ -322,7 +411,7 @@ def check_technology_requirement(doc, entities_do_not_apply, programming_languag
     reason_not_apply = list(set(reason_not_apply))
     list_tags = list(set(list_tags))
 
-    return apply, reason_not_apply, list_technologies_no_knowledge, list_tags
+    return apply_technology, reason_not_apply, list_technologies_no_knowledge, list_tags
 
 def check_if_email(doc,nlp):
     """Function to check if the job description has an email as the recruiters usually ask you to apply through
@@ -352,42 +441,13 @@ def check_if_email(doc,nlp):
     
     return email
 
-def check_apply_or_not(description,
-                       possible_languages,
-                       adj_to_check,
-                       noun_to_check,
-                       propn_to_check,
-                       verb_to_check,
-                       adv_to_check,
-                       similarity_threshold,
-                       seniority_do_not_apply,
-                       experience_max_year_threshold,
-                       entities_do_not_apply,
-                       programming_languages_apply,
-                       backend_frameworks_apply
-                       ):
+def check_apply_or_not(description):
     """Function to decide if apply for the job or not
     
     Parameters
     ----------
         description : str
             Description to check
-        possible_languages : list
-            List of languages that you speak
-        adj_to_check, noun_to_check, propn_to_check, verb_to_check, adv_to_check : list
-            List of words to check if they are in the document and their similarity with doc words
-        similarity_threshold : float
-            Threshold to decide if the words are similar or not. Default 0.7
-        seniority_do_not_apply : list
-            List of seniority words that can be present in the description not to apply for the job
-        experience_max_year_threshold : int
-            Max threshold of years to apply or not to the job
-        entities_do_not_apply : list
-            List of entities that you dont want to apply. Example: "Automation Server", "In-Memory Data Store", etc
-        programming_languages_apply : list
-            List of programming languages that you know. Example: "python", "dax", etc
-        backend_frameworks_apply : list
-            List of backend frameworks that you know: Example: "django", "flask"
     Returns
     -------
         apply : bool
@@ -414,26 +474,13 @@ def check_apply_or_not(description,
     doc = nlp(clean_description)
 
     # Check language requirement
-    apply_lang, reason_not_apply_lang = check_language_requirement(doc,
-                                                         nlp,
-                                                         possible_languages,
-                                                         adj_to_check,
-                                                         noun_to_check,
-                                                         propn_to_check,
-                                                         verb_to_check,
-                                                         adv_to_check,
-                                                         similarity_threshold)
+    apply_lang, reason_not_apply_lang = check_language_requirement(doc, nlp)
 
     # Check experience requirement
-    apply_exp, reason_not_apply_exp = check_experience_requirement(doc,
-                                 seniority_do_not_apply,
-                                 experience_max_year_threshold, nlp)
+    apply_exp, reason_not_apply_exp = check_experience_requirement(doc, nlp)
     
     # Check technology requirement
-    apply_tech, reason_not_apply_tech, list_technologies_no_knowledge, list_tags = check_technology_requirement(doc,
-                                                                                                     entities_do_not_apply,
-                                                                                                     programming_languages_apply,
-                                                                                                     backend_frameworks_apply)
+    apply_tech, reason_not_apply_tech, list_technologies_no_knowledge, list_tags = check_technology_requirement(doc)
 
     # Check if there is an email in the description
     email = check_if_email(doc,nlp)

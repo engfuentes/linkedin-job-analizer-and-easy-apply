@@ -1,9 +1,10 @@
 # My files
 auth.json
-old/
+test/
 Pipfile
 Pipfile.lock
 data/linkedin_jobs.json
+sql-queries.sql
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

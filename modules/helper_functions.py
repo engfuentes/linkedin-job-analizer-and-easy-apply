@@ -1,9 +1,9 @@
 from bs4 import BeautifulSoup
-import re
-import json
+import re, sys, json, logging, configparser
 from modules.item import Job
 import os.path
 from googletrans import Translator
+from modules.save_to_postgresql_db import save_to_postgresql_db
 
 def scrap_job(job_html):
     """Function to scrap the information of the job
@@ -16,8 +16,8 @@ def scrap_job(job_html):
     -------
         job : instance
             Instance of a job class with the scrapped information of the job
-    
     """
+    logger = logging.getLogger('scrap_job_help_function')
 
     # Create job instance
     job = Job()
@@ -30,16 +30,26 @@ def scrap_job(job_html):
     job.url = "https://www.linkedin.com/" + soup.find("a", href=True)['href']
 
     # Get job name
-    job.name = soup.find("h2", class_="jobs-unified-top-card__job-title").get_text().strip()
+    job.position_name = soup.find("h2", class_="jobs-unified-top-card__job-title").get_text().strip()
 
     # Get company, city, contract_type and number of applicants
     company_location_applicants = soup.find("div", class_="jobs-unified-top-card__primary-description").get_text().split("·")
     job.company = company_location_applicants[0].strip()
-    job.location = company_location_applicants[1].split("\n")[0].split("(")[0].strip()
+    try:
+        location = company_location_applicants[1].split("\n")[0].split("(")[0].strip().split(",")
+        if len(location) < 3:
+            job.city = location[0]
+        if len(location) == 3:
+            job.city = location[0]
+            job.country = location[2].replace("Reposted", "").strip()
+    except:
+        job.city = company_location_applicants[1].split("\n")[0].strip()
+
     try:
         job.contract_type = company_location_applicants[1].split("\n")[0].split("(")[1].split(")")[0].strip()
     except:
         job.contract_type = None
+
     job.applicants = int(re.findall(r'\d+',company_location_applicants[2])[0])
 
     # Get job contract_time and job_experience
@@ -47,6 +57,7 @@ def scrap_job(job_html):
         job.contract_time = soup.find("li", class_="jobs-unified-top-card__job-insight").get_text().split("·")[0].strip()
     except:
         job.contract_time = None
+
     try:
         job.experience = soup.find("li", class_="jobs-unified-top-card__job-insight").get_text().split("·")[1].strip()
     except:
@@ -58,6 +69,34 @@ def scrap_job(job_html):
     job.posted_date = description_dirty.split("\n")[-1].replace("Posted on","").replace(".", "").strip()
 
     return job
+
+def save_job_questions_no_answer(list_questions_no_answer, path):
+    """Function to save the questions without answers
+        
+        Parameters
+        ----------
+            list_questions_no_answer : list
+                List of questions without answers
+            path : str
+                path to save the information in a json file
+        Returns
+        -------
+            json_file : json
+                Create a json file in the path directory
+        """
+
+    # if file exists open the file, append the data and write again the file
+    if os.path.isfile(path):
+        with open(path, 'r+') as json_file:
+            file_data = json.load(json_file)
+            for question in list_questions_no_answer:
+                file_data.append(question)
+        with open(path, 'w') as json_file:        
+            json.dump(file_data, json_file, indent=4)
+    # Else create the file and write it
+    else:
+        with open(path, 'w') as json_file:
+            json.dump(list_questions_no_answer, json_file, indent=4)
 
 def save_job_info_to_json(list_jobs_instances, path):
     """Function to scrap the information of the job
@@ -74,6 +113,10 @@ def save_job_info_to_json(list_jobs_instances, path):
             Create a json file in the path directory
     """
     
+    logger = logging.getLogger('save_job_info_to_json')
+
+    logger.info("Saving to json file")
+
     list_dicts = []
     # Transform objects to dict
     for instance in list_jobs_instances:
@@ -189,3 +232,152 @@ def check_similarity(list_doc, list_check, entity):
                     max_similarity = similarity
 
     return max_similarity
+
+def scrap_easy_apply(questions_html):
+    """Function to scrap the information of EasyApply Questions tab
+    
+    Parameters
+    ----------
+        questions_html : html
+            html code of the questions
+    Returns
+    -------
+        input_questions : list
+            List of questions that require input
+        select_questions : list
+            List of questions that require to select from options
+        checkbox_questions : list
+            List of questions that require to click a button with options
+        fill_select_questions : list
+            List of questions that require first to fill and then select an option
+    """
+    soup = BeautifulSoup(questions_html, "lxml")
+
+    questions = soup.find_all("div", class_="jobs-easy-apply-form-section__grouping")
+
+    input_questions = []
+    select_questions = []
+    checkbox_questions = []
+    fill_select_questions = []
+
+    for i, question in enumerate(questions):
+        if question.find("label", class_="artdeco-text-input--label"):
+            input_questions.append(question.get_text().strip())
+        if question.find("select"):
+            select_questions.append(question.find("span").get_text().strip())
+        if question.find("input", class_="fb-form-element__checkbox"):
+            legend = question.find("legend")
+            checkbox_questions.append(legend.find("span", class_="visually-hidden").get_text().strip())
+        if question.find("label",class_="fb-dash-form-element__label") and not question.find("select"):
+            fill_select_questions.append(question.find("span", class_="visually-hidden").get_text().strip())
+
+    return input_questions, select_questions, checkbox_questions, fill_select_questions
+
+def load_json_to_dict(path):
+    """Function that loads a json file as dict
+    
+    Parameters
+    ----------
+        path : str
+            Path to the json file
+    Returns
+    -------
+        file_data : dict
+            Data from the json, as dict
+    """
+    with open(path, 'r') as json_file:
+        file_data = json.load(json_file)
+        return file_data
+
+def load_user_search_save_apply_options():
+    """Function that loads the user options to search, save and apply from the config.ini file
+    
+    Returns
+    -------
+        dict_user_opt_search_save_apply : dict
+            Dictionary with the user options of search, save and apply      
+    """
+    # Load parameters from config file
+    config_obj = configparser.ConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
+    config_obj.read("./configfile.ini")
+
+    dict_user_opt_search_save_apply = dict()
+    
+    # Options
+    dict_user_opt_search_save_apply["save_to_json_file"] = config_obj.getboolean('options', 'save_to_json_file')
+    dict_user_opt_search_save_apply["save_to_postgresql_db"] = config_obj.getboolean('options', 'save_to_postgresql_db')
+    dict_user_opt_search_save_apply["use_easy_apply"] = config_obj.getboolean('options', 'easy_apply')
+
+    # User search
+    dict_user_opt_search_save_apply["search_position"] = config_obj["user_search"]["position"]
+    dict_user_opt_search_save_apply["search_country"] = config_obj["user_search"]["country"]
+
+    return dict_user_opt_search_save_apply
+
+def logger_config():
+    """Function that sets the logger config"""
+    logging.basicConfig(
+        filename="logs.log",
+        encoding="utf-8",
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        level=logging.INFO,
+    )
+
+async def get_total_number_job_pages(page):
+    """Function that gets the number of job pages that has the search results
+    
+    Parameters
+    ----------
+        page : playwright object
+            playwright page object
+    Returns
+    -------
+        init_page_number : int
+            Initial page number
+        max_number_pages : int
+            Max number of pages
+    """
+    # Check all the pages while there is no error
+    init_page_number = 1 # Initial page number
+
+    # Get the max number of pages
+    num_pages_range = await page.locator("div.artdeco-pagination__page-state").text_content()
+    max_number_pages = int(re.findall(r'[0-9]+', num_pages_range)[1])
+
+    return init_page_number, max_number_pages
+
+def save_jobs_information(list_jobs_instances, dict_user_opt_search_save_apply):
+    """Function that saves the information to a json and/or PostgreSQL database
+    
+    Parameters
+    ----------
+        list_jobs_instances : list
+            List of job instances with the jobs information
+        dict_user_opt_search_save_apply : dict
+            Dictionary with the user options of search, save and apply  
+    """
+
+    # After one page has been webscrapped and analyzed then save all the instances of the list to a json file. If Option = True
+    if dict_user_opt_search_save_apply["save_to_json_file"]:
+        save_job_info_to_json(list_jobs_instances, "./data/linkedin_jobs.json")
+
+    # Save to postgresql if option = True
+    if dict_user_opt_search_save_apply["save_to_postgresql_db"]:
+        save_to_postgresql_db(list_jobs_instances)
+
+def log_exceptions(e, logger):
+    """Function that log the exceptions and break the try
+    Parameters
+    ----------
+        e : Exception
+            List of job instances with the jobs information
+        logger : object
+            logger object 
+    """
+    
+    logger.info(f"Error: {e}")
+    exc_type, exc_obj, exc_tb = sys.exc_info()
+    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+    logger.info(f"Exc_type: {exc_type}")
+    logger.info(f"FName: {fname}")
+    logger.info(f"LineNo: {exc_tb.tb_lineno}")

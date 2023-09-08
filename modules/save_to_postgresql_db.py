@@ -1,8 +1,9 @@
-import psycopg2
-import os
+import psycopg2, os, logging
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger('save_to_postgresql_db')
 
 def save_to_postgresql_db(list_jobs_instances):
     """Function used to saved the data from the jobs to a PosgreSQL Database
@@ -19,6 +20,8 @@ def save_to_postgresql_db(list_jobs_instances):
             Reason not to apply if there is one
     """
     
+    logger.info("Saving to the PostgreSQL DB")
+
     ## Connection details
     POSTGRESQL_HOSTNAME = os.getenv("POSTGRESQL_HOSTNAME")
     POSTGRESQL_USERNAME = os.getenv("POSTGRESQL_USERNAME")
@@ -35,11 +38,14 @@ def save_to_postgresql_db(list_jobs_instances):
     # Create linkedin_jobs table if none exists
     cur.execute("""
     CREATE TABLE IF NOT EXISTS linkedin_jobs (
-        id serial PRIMARY KEY, 
+        id serial ,
+        search_position VARCHAR(255),
+        search_country VARCHAR(255), 
         url TEXT,
-        name VARCHAR(255),
+        position_name VARCHAR(255),
         company VARCHAR(255),
-        location VARCHAR(255),
+        city VARCHAR(255),
+        country VARCHAR(255),
         contract_type VARCHAR(255),
         applicants INTEGER,
         contract_time VARCHAR(255),
@@ -50,64 +56,97 @@ def save_to_postgresql_db(list_jobs_instances):
         email TEXT [],
         reason_not_apply TEXT [],
         list_tech_no_knowledge TEXT [],
-        list_tags TEXT []
+        list_tags TEXT [],
+        easy_apply_questions TEXT [],
+        applied BOOL,
+        could_not_apply_due_to_questions BOOL,
+        PRIMARY KEY (posted_date, position_name, company) 
     );
     """)
 
     for job in list_jobs_instances:
-        # Define insert statement
-        cur.execute("""INSERT INTO linkedin_jobs (
-            url,
-            name,
-            company,
-            location,
-            contract_type,
-            applicants,
-            contract_time,
-            experience,
-            description,
-            posted_date,
-            apply,
-            email,
-            reason_not_apply,
-            list_tech_no_knowledge,
-            list_tags
-            ) values (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-                );""", (
-            job.url,
-            job.name,
-            job.company,
-            job.location,
-            str(job.contract_type),
-            job.applicants,
-            str(job.contract_time),
-            job.experience,
-            job.description,
-            job.posted_date,
-            job.apply,
-            job.email,
-            job.reason_not_apply,
-            job.list_tech_no_knowledge,
-            job.list_tags
-        ))
+        # Check if already in Database
+        cur.execute(
+            "SELECT * FROM linkedin_jobs WHERE posted_date = %s AND position_name = %s AND company = %s",\
+            (job.posted_date, job.position_name, job.company,))
+        result = cur.fetchone()
 
-        # Execute insert of data into database
-        connection.commit()
+        ## If it is in the Db then log but do not insert
+        if result:
+            logger.warn(f"Job already in database: {job.position_name}")
+        
+        else:
+            # Define insert statement
+            cur.execute("""INSERT INTO linkedin_jobs (
+                search_position,
+                search_country, 
+                url,
+                position_name,
+                company,
+                city,
+                country,
+                contract_type,
+                applicants,
+                contract_time,
+                experience,
+                description,
+                posted_date,
+                apply,
+                email,
+                reason_not_apply,
+                list_tech_no_knowledge,
+                list_tags,
+                easy_apply_questions,
+                applied,
+                could_not_apply_due_to_questions
+                ) values (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s
+                    );""", (
+                job.search_position,
+                job.search_country,            
+                job.url,
+                job.position_name,
+                job.company,
+                job.city,
+                job.country,
+                str(job.contract_type),
+                job.applicants,
+                str(job.contract_time),
+                job.experience,
+                job.description,
+                job.posted_date,
+                job.apply,
+                job.email,
+                job.reason_not_apply,
+                job.list_tech_no_knowledge,
+                job.list_tags,
+                job.easy_apply_questions,
+                job.applied,
+                job.could_not_apply_due_to_questions
+            ))
+
+            # Execute insert of data into database
+            connection.commit()
     
     # Close cursor and connection to database 
     cur.close()
