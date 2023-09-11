@@ -21,6 +21,7 @@ class Job():
         self.easy_apply_questions = None
         self.applied = None
         self.could_not_apply_due_to_questions = None
+        self.manual_apply = None
     
     def transform_to_dict(self):
         return self.__dict__

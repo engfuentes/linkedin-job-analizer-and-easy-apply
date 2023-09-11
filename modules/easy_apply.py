@@ -57,12 +57,7 @@ async def check_questions(page, job_inst):
     questions_html = await page.content()
     # Scrap the html to check if there are questions with 3 types: Input, Select or Checkbox
     input_questions, select_questions, checkbox_questions, fill_select_questions = scrap_easy_apply(questions_html)
-    # Make one list of the 3 lists
-    logger.info(f"Input questions: {input_questions}")
-    logger.info(f"Select questions: {select_questions}")
-    logger.info(f"Checkbox questions: {checkbox_questions}")
-    logger.info(f"Fill questions: {fill_select_questions}")
-
+    # Make one list of the 4 lists
     easy_apply_questions = list(itertools.chain(input_questions, select_questions, checkbox_questions, fill_select_questions))
     # Add to the job instance the Easy Apply questions
     job_inst.easy_apply_questions = easy_apply_questions
@@ -140,10 +135,8 @@ async def check_questions(page, job_inst):
                     logger.info(f"Label text: {label_text}")
                     logger.info(f"Fill text: {fill_select_question}")
                     if label_text == fill_select_question:
-                        logger.info(f"Filling")
                         await div.get_by_role("combobox").fill(answer) # Fill the answer
                         await page.wait_for_timeout(500)
-                        logger.info(f"Selecting")
                         await div.locator("span[aria-hidden=true]").press("ArrowDown")
                         await div.locator("span[aria-hidden=true]").press("Enter")
                         break
@@ -188,10 +181,7 @@ async def check_buttons(page, job_inst):
     await page.wait_for_timeout(500)
     if (await page.get_by_label("Submit application").count()) == 1:
         # If there is a Submit Application button
-        #await page.get_by_label("Submit application").click()
-        # TEST
-        await exit_easy_apply(page)
-        #
+        await page.get_by_label("Submit application").click()
         job_inst.could_not_apply_due_to_questions = False
         job_inst.applied = True
         
@@ -237,7 +227,7 @@ async def easy_apply(page, job_inst):
             Instance of a job class with the job information
     """
     # Click Easy apply button
-    await page.locator("div.jobs-s-apply button:visible").click()
+    await page.locator("div.jobs-s-apply > div > button:visible > span", has_text="Easy Apply").click()
     await page.wait_for_timeout(1000)
 
     job_inst.applied = False

@@ -1,20 +1,18 @@
 import asyncio
 from playwright.async_api import async_playwright
-from modules.helper_functions import scrap_job, log_exceptions
+from modules.helper_functions import scrap_job, log_exceptions, check_easy_apply_button
 from modules.check_apply import check_apply_or_not
 from modules.easy_apply import easy_apply
 import logging
 
-async def create_broswer_search_apply_filters(p, dict_user_opt_search_save_apply):
-    """Function that creates a broswer, context and page. Performs the search of the job
-    and also applies the search filters
+async def create_broswer_page(p):
+    """Function that creates a broswer, context and page.
     
     Parameters
     ----------
         p : playwright object
             playwright object
-        dict_user_opt_search_save_apply : dict
-            Dictionary with the user options of search, save and apply 
+
     Returns
     -------
         page : playwright object
@@ -23,7 +21,7 @@ async def create_broswer_search_apply_filters(p, dict_user_opt_search_save_apply
             playwright browser object
     """
     # Create browser
-    browser = await p.chromium.launch(headless=True)
+    browser = await p.chromium.launch(headless=False)
     
     # Create a context and load the cookies with the login info
     context = await browser.new_context(storage_state="auth.json")
@@ -33,34 +31,123 @@ async def create_broswer_search_apply_filters(p, dict_user_opt_search_save_apply
     
     await page.goto("https://www.linkedin.com/jobs/")
 
-    user_search_position = dict_user_opt_search_save_apply["search_position"]
-    user_search_country = dict_user_opt_search_save_apply["search_country"]
-
-    # Choose the job title
-    await page.get_by_role("combobox", name="Search by title, skill, or company").click()
-    await page.get_by_role("combobox", name="Search by title, skill, or company").fill(f'{user_search_position}')
-    await page.get_by_role("button", name=f'{user_search_position}', exact=True).click()
-    await page.wait_for_timeout(2000)
-
-    # Choose the country
-    await page.get_by_role("combobox", name="City, state, or zip code").click()
-    await page.get_by_role("combobox", name="City, state, or zip code").fill(f'{user_search_country}')
-    await page.get_by_role("button", name=f'{user_search_country}', exact=True).click()
-
-    await page.wait_for_timeout(2000)
-    await page.get_by_label("Easy Apply filter.").click()
-
-    await page.wait_for_timeout(2000)
-
     return page, browser
 
-async def scrap_apply_jobs_page(page, dict_user_opt_search_save_apply):
+async def search_job_position(page, user_search_position):
+    """Function to search for the job position
+
+    Parameters
+    ----------
+        page : playwright object
+            playwright page object
+        user_search_position : str
+            Position to search for
+
+    Returns
+    -------
+        page : playwright object
+            playwright page object
+    """
+    # Choose the job title
+    await page.get_by_role("combobox", name="Search by title, skill, or company").fill(f'{user_search_position}')
+    await page.wait_for_timeout(1000)
+    await page.locator("label", has_text="Search by title, skill, or company").press("Enter") # 
+    await page.wait_for_timeout(1000)
+
+    return page
+
+async def search_job_country(page, user_search_country):
+    """Function to search for the job country
+
+    Parameters
+    ----------
+        page : playwright object
+            playwright page object
+        user_search_country : str
+            Country to search for
+
+    Returns
+    -------
+        page : playwright object
+            playwright page object
+    """
+    # Choose the country
+    await page.get_by_role("combobox", name="City, state, or zip code").fill(f'{user_search_country}')
+    await page.wait_for_timeout(1000)
+    await page.locator("label", has_text="City, state, or zip code").press("Enter")
+
+    return page
+
+async def apply_filers(page, dict_user_opts):
+    """Function to apply linkedin search filters
+
+    Parameters
+    ----------
+        page : playwright object
+            playwright page object
+
+    Returns
+    -------
+        page : playwright object
+            playwright page object
+        dict_user_opt_search_save_apply : dict
+            Dictionary with the user options of search, save and apply  
+    """
+    # Easy Apply filter
+    if dict_user_opts["easy_apply_filter"]:
+        await page.wait_for_timeout(1000)
+        await page.get_by_label("Easy Apply filter.").click()
+        await page.wait_for_timeout(1000)
+    
+    return page
+
+async def search_job_offers(page, user_search_position, user_search_country, \
+    country_search_count, dict_user_opts):
+    """Function to search for the job offers in Linkedin
+
+    Parameters
+    ----------
+        page : playwright object
+            playwright page object
+        user_search_position : str
+            Position to search for
+        user_search_country : str
+            Country to search for
+        country_search_count : int
+            Counter to check if is the first search or not
+        dict_user_opts : dict
+            Dictionary with the user options of search, save and apply  
+
+    Returns
+    -------
+        page : playwright object
+            playwright page object
+    """
+    # If is the first search, search for the job position and country, else just the country
+    if country_search_count == 1:
+        # Search for the job position and country
+        page = await search_job_position(page, user_search_position)
+        page = await search_job_country(page, user_search_country)
+        page = await apply_filers(page, dict_user_opts)
+
+        return page
+    else:
+        # Search for the country
+        page = await search_job_country(page, user_search_country)
+    
+        return page
+
+async def scrap_apply_jobs_page(page, user_search_position, user_search_country, dict_user_opts):
     """Function that performs the scrap decide if apply and apply actions to a job search results page
     Parameters
     ----------
         page : playwright object
             playwright page
-        dict_user_opt_search_save_apply : dict
+        user_search_position : str
+            Position to search for
+        user_search_country : str
+            Country to search for
+        dict_user_opts : dict
             Dictionary with the user options of search, save and apply
     Returns
     -------
@@ -85,11 +172,15 @@ async def scrap_apply_jobs_page(page, dict_user_opt_search_save_apply):
         job_html = await page.content()
         
         # Scrap the job information
-        job_inst = scrap_job(job_html) # Get the job instance with the scrapped info
+        try:
+            job_inst = scrap_job(job_html) # Get the job instance with the scrapped info
+        except:
+            logger.warn("Skipping job due to problem while scraping the information")
+            continue
 
         # Add to the job instance the search_position and search_country
-        job_inst.search_position = dict_user_opt_search_save_apply["search_position"]
-        job_inst.search_country = dict_user_opt_search_save_apply["search_country"]
+        job_inst.search_position = user_search_position
+        job_inst.search_country = user_search_country
 
         logger.info(f"Check if apply:{job_inst.position_name}, {job_inst.company}, {job_inst.url}")
         # Check the description to decide if apply or not. Also get the email if must be applied sending email
@@ -98,8 +189,14 @@ async def scrap_apply_jobs_page(page, dict_user_opt_search_save_apply):
         job_inst.list_tech_no_knowledge, job_inst.list_tags,  \
         job_inst.description = check_apply_or_not(job_inst.description)
 
+        # Check if there is an Easy Apply Button
+        bool_easy_apply_button = await check_easy_apply_button(page)
+        logger.info(f"EasyApply button:{bool_easy_apply_button}")
+        if not bool_easy_apply_button and job_inst.apply:
+            job_inst.manual_apply = True
+
         # If it was decided to apply and there is not an email in the description (many require to send an email)
-        if job_inst.apply and not job_inst.email and dict_user_opt_search_save_apply["use_easy_apply"]:
+        if job_inst.apply and not job_inst.email and dict_user_opts["apply_with_easy_apply"] and bool_easy_apply_button:
             logger.info(f"Apply: {job_inst.position_name}, {job_inst.company}, {job_inst.url}")
             job_inst = await easy_apply(page, job_inst)
             logger.info(f"Applied: {job_inst.applied}")

@@ -60,6 +60,7 @@ def save_to_postgresql_db(list_jobs_instances):
         easy_apply_questions TEXT [],
         applied BOOL,
         could_not_apply_due_to_questions BOOL,
+        manual_apply BOOL,
         PRIMARY KEY (posted_date, position_name, company) 
     );
     """)
@@ -98,8 +99,10 @@ def save_to_postgresql_db(list_jobs_instances):
                 list_tags,
                 easy_apply_questions,
                 applied,
-                could_not_apply_due_to_questions
+                could_not_apply_due_to_questions,
+                manual_apply
                 ) values (
+                    %s,
                     %s,
                     %s,
                     %s,
@@ -142,7 +145,8 @@ def save_to_postgresql_db(list_jobs_instances):
                 job.list_tags,
                 job.easy_apply_questions,
                 job.applied,
-                job.could_not_apply_due_to_questions
+                job.could_not_apply_due_to_questions,
+                job.manual_apply
             ))
 
             # Execute insert of data into database

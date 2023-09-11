@@ -193,7 +193,8 @@
         "Keras",
         "TensorFlow",
         "PyTorch",
-        "scikit-learn"
+        "scikit-learn",
+        "spaCy"
     ],
     "Mobile Framwork": [
         "React Native",
@@ -276,7 +277,8 @@
     "Python Library": [
         "Pandas",
         "Selenium",
-        "Playwright"
+        "Playwright",
+        "Numpy"
     ],
     "Role": [
         "Python Developer",

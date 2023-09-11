@@ -1,10 +1,10 @@
-# linkedin-easy-apply
+# linkedin-job-analizer-and-easy-apply
 
-## Project that checks in Linkedin (using NLP) if you have the Language, Experience and Technology requirements for a chosen position and country. If you have them, it applies using EasyApply.
+## Project that checks in Linkedin (using NLP) if you have the Language, Experience and Technology requirements for a chosen position and country. If you have them it applies using EasyApply if it is possible. All the information is saved to a PostgreSQL database or a json file.
 
 The user can choose different options in *configfile.ini* 
 
-*Playwright* framework is used to search for a position and country and applies a filter to find the jobs that have *"EasyApply"*. Then scraps each job position of the list and afer perform the following tasks:
+*Playwright* framework is used to search for a position and country and if you want applies a filter to find the jobs that have *"EasyApply"*. Then scraps each job position of the list and afer perform the following tasks:
 - If the job description is in other language than in English it translates it with the *googletrans* library.
 - Cleans the job description.
 - Analyze job descriptions with spaCy, an NLP (Natural Language Processing) library.

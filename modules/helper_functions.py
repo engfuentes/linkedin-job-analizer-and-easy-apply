@@ -34,7 +34,10 @@ def scrap_job(job_html):
 
     # Get company, city, contract_type and number of applicants
     company_location_applicants = soup.find("div", class_="jobs-unified-top-card__primary-description").get_text().split("·")
-    job.company = company_location_applicants[0].strip()
+    try:
+        job.company = company_location_applicants[0].strip()
+    except:
+        job.company = None
     try:
         location = company_location_applicants[1].split("\n")[0].split("(")[0].strip().split(",")
         if len(location) < 3:
@@ -50,7 +53,10 @@ def scrap_job(job_html):
     except:
         job.contract_type = None
 
-    job.applicants = int(re.findall(r'\d+',company_location_applicants[2])[0])
+    try:
+        job.applicants = int(re.findall(r'\d+',company_location_applicants[2])[0])
+    except:
+        job.applicants = None
 
     # Get job contract_time and job_experience
     try:
@@ -294,25 +300,28 @@ def load_user_search_save_apply_options():
     
     Returns
     -------
-        dict_user_opt_search_save_apply : dict
+        dict_user_opts : dict
             Dictionary with the user options of search, save and apply      
     """
     # Load parameters from config file
     config_obj = configparser.ConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
     config_obj.read("./configfile.ini")
 
-    dict_user_opt_search_save_apply = dict()
+    dict_user_opts = dict()
     
     # Options
-    dict_user_opt_search_save_apply["save_to_json_file"] = config_obj.getboolean('options', 'save_to_json_file')
-    dict_user_opt_search_save_apply["save_to_postgresql_db"] = config_obj.getboolean('options', 'save_to_postgresql_db')
-    dict_user_opt_search_save_apply["use_easy_apply"] = config_obj.getboolean('options', 'easy_apply')
+    dict_user_opts["save_to_json_file"] = config_obj.getboolean('options', 'save_to_json_file')
+    dict_user_opts["save_to_postgresql_db"] = config_obj.getboolean('options', 'save_to_postgresql_db')
+    dict_user_opts["apply_with_easy_apply"] = config_obj.getboolean('options', 'easy_apply')
 
     # User search
-    dict_user_opt_search_save_apply["search_position"] = config_obj["user_search"]["position"]
-    dict_user_opt_search_save_apply["search_country"] = config_obj["user_search"]["country"]
+    dict_user_opts["search_positions"] = config_obj.getlist("user_search","positions")
+    dict_user_opts["search_countries"] = config_obj.getlist("user_search","countries")
 
-    return dict_user_opt_search_save_apply
+    # Filters
+    dict_user_opts["easy_apply_filter"] = config_obj.getboolean("filters","easy_apply")
+
+    return dict_user_opts
 
 def logger_config():
     """Function that sets the logger config"""
@@ -341,12 +350,15 @@ async def get_total_number_job_pages(page):
     init_page_number = 1 # Initial page number
 
     # Get the max number of pages
-    num_pages_range = await page.locator("div.artdeco-pagination__page-state").text_content()
-    max_number_pages = int(re.findall(r'[0-9]+', num_pages_range)[1])
+    if await page.locator("div.jobs-search-results-list > div.jobs-search-results-list__pagination").count() != 0:
+        num_pages_range = await page.locator("div.artdeco-pagination__page-state").text_content()
+        max_number_pages = int(re.findall(r'[0-9]+', num_pages_range)[1])
+    else:
+        max_number_pages = 1
 
     return init_page_number, max_number_pages
 
-def save_jobs_information(list_jobs_instances, dict_user_opt_search_save_apply):
+def save_jobs_information(list_jobs_instances, dict_user_opts):
     """Function that saves the information to a json and/or PostgreSQL database
     
     Parameters
@@ -358,11 +370,11 @@ def save_jobs_information(list_jobs_instances, dict_user_opt_search_save_apply):
     """
 
     # After one page has been webscrapped and analyzed then save all the instances of the list to a json file. If Option = True
-    if dict_user_opt_search_save_apply["save_to_json_file"]:
+    if dict_user_opts["save_to_json_file"]:
         save_job_info_to_json(list_jobs_instances, "./data/linkedin_jobs.json")
 
     # Save to postgresql if option = True
-    if dict_user_opt_search_save_apply["save_to_postgresql_db"]:
+    if dict_user_opts["save_to_postgresql_db"]:
         save_to_postgresql_db(list_jobs_instances)
 
 def log_exceptions(e, logger):
@@ -381,3 +393,20 @@ def log_exceptions(e, logger):
     logger.info(f"Exc_type: {exc_type}")
     logger.info(f"FName: {fname}")
     logger.info(f"LineNo: {exc_tb.tb_lineno}")
+
+async def check_easy_apply_button(page):
+    """Function checks if there is an EasyApply button to apply
+    
+    Parameters
+    ----------
+        page : playwright object
+            playwright page object
+    Returns
+    -------
+        bool : bool
+            True if there is an Easy Apply button, False otherwise
+    """
+    if await page.locator("div.jobs-s-apply > div > button:visible > span", has_text="Easy Apply").count() !=0:
+        return True
+    else:
+        return False

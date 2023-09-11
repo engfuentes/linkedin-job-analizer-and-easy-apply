@@ -5,6 +5,8 @@ Pipfile
 Pipfile.lock
 data/linkedin_jobs.json
 sql-queries.sql
+data/easy_apply_questions_answers_mine.json
+data/questions_no_answer.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
