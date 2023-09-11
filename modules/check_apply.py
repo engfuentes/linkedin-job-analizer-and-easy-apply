@@ -392,8 +392,10 @@ def check_technology_requirement(doc):
                 # Check if any of the programming languages that you know is in the sentence, as there can be an or
                 # example: proficiency in programming languages such as python, java, or scala
                 for prog_lang in programming_languages_apply:
-                    if prog_lang in sentence.text and "or" in sentence.text:
-                        break
+                    if prog_lang in sentence.text:
+                            for token in sentence:
+                                if token.text == "or": # Check if there is an "or" word in the sentence
+                                    break
                     else:
                         apply_technology = False
                         list_technologies_no_knowledge.append(entity.text) # Append list of technologies that you dont know

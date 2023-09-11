@@ -313,6 +313,7 @@ def load_user_search_save_apply_options():
     dict_user_opts["save_to_json_file"] = config_obj.getboolean('options', 'save_to_json_file')
     dict_user_opts["save_to_postgresql_db"] = config_obj.getboolean('options', 'save_to_postgresql_db')
     dict_user_opts["apply_with_easy_apply"] = config_obj.getboolean('options', 'easy_apply')
+    dict_user_opts["easy_apply_quest_answ_path"] = config_obj["options"]["easy_apply_quest_answ_path"]
 
     # User search
     dict_user_opts["search_positions"] = config_obj.getlist("user_search","positions")

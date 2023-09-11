@@ -30,7 +30,7 @@ async def exception_questions(e, logger, job_inst, page):
     await exit_easy_apply(page)
     return job_inst
 
-async def check_questions(page, job_inst):
+async def check_questions(page, job_inst, dict_user_opts):
     """Function that checks if there are questions in the EasyApply tab. If there are questions
     it checks if it has the answers, if not, it addes them to a list that is saved to a json file
     
@@ -40,6 +40,8 @@ async def check_questions(page, job_inst):
             Playwright page
         job_inst : job instance
             Instance of the job that is being processed
+        dict_user_opts : dict
+            Dictionary with the user options of search, save and apply 
     Returns
     -------
         job_inst : job instance
@@ -51,7 +53,7 @@ async def check_questions(page, job_inst):
     missing_questions = []
 
     # Import the questions and answers of EasyApply
-    easy_apply_quest_answ = load_json_to_dict("./data/easy_apply_questions_answers.json")
+    easy_apply_quest_answ = load_json_to_dict(dict_user_opts["easy_apply_quest_answ_path"])
 
     # Get html code from the page
     questions_html = await page.content()
@@ -164,7 +166,7 @@ async def exit_easy_apply(page):
         await page.wait_for_timeout(500)
         await page.get_by_role("button", name="Discard").click()
 
-async def check_buttons(page, job_inst):
+async def check_buttons(page, job_inst, dict_user_opts):
     """Function that checks the 3 different buttons ofthe Easy Apply tabs: Next, Review, Submit Application
     
     Parameters
@@ -173,6 +175,8 @@ async def check_buttons(page, job_inst):
             Playwright page
         job_inst : job instance
             Instance of the job that is being processed
+        dict_user_opts : dict
+            Dictionary with the user options of search, save and apply 
     Returns
     -------
         job_inst : job instance
@@ -195,7 +199,7 @@ async def check_buttons(page, job_inst):
         # If there is a Review button or a Next Button
         
         # Check if there are questions
-        job_inst = await check_questions(page, job_inst)
+        job_inst = await check_questions(page, job_inst, dict_user_opts)
 
         # Check if questions could be answered, if not exit the EasyApply Tab and return the instance
         if job_inst.could_not_apply_due_to_questions == True:
@@ -214,7 +218,7 @@ async def check_buttons(page, job_inst):
 
         return job_inst
 
-async def easy_apply(page, job_inst):
+async def easy_apply(page, job_inst, dict_user_opts):
     """Function that applies to the job with Easy Apply. It is going to check if it has a tab with specific questions
     for the job. If this questions are not in a dict, then they are saved to answer and later apply again
     
@@ -224,6 +228,8 @@ async def easy_apply(page, job_inst):
             Playwright object
         job_inst : instance
             Instance of a job class with the job information
+        dict_user_opts : dict
+            Dictionary with the user options of search, save and apply    
     Returns
     -------
         job_inst : instance
@@ -241,7 +247,7 @@ async def easy_apply(page, job_inst):
     applied = job_inst.applied
     not_apply_due_to_questions = job_inst.could_not_apply_due_to_questions
     while (applied == False) and (not_apply_due_to_questions == False):
-        job_inst = await check_buttons(page, job_inst)
+        job_inst = await check_buttons(page, job_inst, dict_user_opts)
         applied = job_inst.applied
         not_apply_due_to_questions = job_inst.could_not_apply_due_to_questions
         await page.wait_for_timeout(1000)

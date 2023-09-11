@@ -207,7 +207,11 @@
     "Monitoring": [
         "Prometheus",
         "Zabbix",
-        "Nagios"
+        "Nagios",
+        "Alertmanager",
+        "Grafana",
+        "Loki", 
+        "Mimir"
     ],
     "Offers": [
         "Training",
@@ -316,7 +320,8 @@
     ],
     "Role Experience": [
         "Senior",
-        "Junior"
+        "Junior",
+        "Lead"
     ],
     "Search Engine": [
         "ElasticSearch",

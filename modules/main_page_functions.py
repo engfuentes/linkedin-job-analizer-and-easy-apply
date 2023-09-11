@@ -23,7 +23,7 @@ async def create_broswer_page(p):
             playwright context object
     """
     # Create browser
-    browser = await p.chromium.launch(headless=False)
+    browser = await p.chromium.launch(headless=True)
     
     # Create a context and load the cookies with the login info
     context = await browser.new_context(storage_state="auth.json")
@@ -200,7 +200,7 @@ async def scrap_apply_jobs_page(page, user_search_position, user_search_country,
         # If it was decided to apply and there is not an email in the description (many require to send an email)
         if job_inst.apply and not job_inst.email and dict_user_opts["apply_with_easy_apply"] and bool_easy_apply_button:
             logger.info(f"Apply: {job_inst.position_name}, {job_inst.company}, {job_inst.url}")
-            job_inst = await easy_apply(page, job_inst)
+            job_inst = await easy_apply(page, job_inst, dict_user_opts)
             logger.info(f"Applied: {job_inst.applied}")
 
         # Scroll with the mouse
