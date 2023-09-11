@@ -19,6 +19,8 @@ async def create_broswer_page(p):
             playwright page object
         browser : playwright object
             playwright browser object
+        context : playwright object
+            playwright context object
     """
     # Create browser
     browser = await p.chromium.launch(headless=False)
@@ -31,7 +33,7 @@ async def create_broswer_page(p):
     
     await page.goto("https://www.linkedin.com/jobs/")
 
-    return page, browser
+    return page, browser, context
 
 async def search_job_position(page, user_search_position):
     """Function to search for the job position
@@ -182,7 +184,7 @@ async def scrap_apply_jobs_page(page, user_search_position, user_search_country,
         job_inst.search_position = user_search_position
         job_inst.search_country = user_search_country
 
-        logger.info(f"Check if apply:{job_inst.position_name}, {job_inst.company}, {job_inst.url}")
+        logger.info(f"Check if apply: {job_inst.position_name}, {job_inst.company}, {job_inst.url}")
         # Check the description to decide if apply or not. Also get the email if must be applied sending email
         # instead of EasyApply, and Reasons not to apply and job tags 
         job_inst.apply, job_inst.email, job_inst.reason_not_apply, \
@@ -202,8 +204,11 @@ async def scrap_apply_jobs_page(page, user_search_position, user_search_country,
             logger.info(f"Applied: {job_inst.applied}")
 
         # Scroll with the mouse
-        await page.mouse.move(x=100, y=300)
-        await page.mouse.wheel(delta_x=0.0, delta_y=150.0)
+        try:
+            await page.mouse.move(x=100, y=300)
+            await page.mouse.wheel(delta_x=0.0, delta_y=140.0)
+        except:
+            continue
 
         # Append the job instance to a list
         list_jobs_instances.append(job_inst)

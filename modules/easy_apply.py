@@ -181,9 +181,12 @@ async def check_buttons(page, job_inst):
     await page.wait_for_timeout(500)
     if (await page.get_by_label("Submit application").count()) == 1:
         # If there is a Submit Application button
-        await page.get_by_label("Submit application").click()
         job_inst.could_not_apply_due_to_questions = False
         job_inst.applied = True
+        await page.get_by_label("Submit application").click()
+        await page.wait_for_timeout(1500)
+        await page.get_by_role("button", name="Done").click()
+        await page.wait_for_timeout(500)
         
         return job_inst
     
@@ -235,8 +238,12 @@ async def easy_apply(page, job_inst):
 
     # Do the loop of checking buttons and filling information until applied or until cannot
     # Apply do to missing answers
-    while (job_inst.applied == False) and (job_inst.could_not_apply_due_to_questions == False):
+    applied = job_inst.applied
+    not_apply_due_to_questions = job_inst.could_not_apply_due_to_questions
+    while (applied == False) and (not_apply_due_to_questions == False):
         job_inst = await check_buttons(page, job_inst)
+        applied = job_inst.applied
+        not_apply_due_to_questions = job_inst.could_not_apply_due_to_questions
         await page.wait_for_timeout(1000)
     
     return job_inst

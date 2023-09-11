@@ -18,7 +18,7 @@ dict_user_opts = load_user_search_save_apply_options()
 async def run(p):
     """Main function"""
     # Create Broswer and apply filters
-    page, browser = await create_broswer_page(p)
+    page, browser, context = await create_broswer_page(p)
 
     # Get positions and countries
     positions = dict_user_opts['search_positions']
@@ -69,6 +69,7 @@ async def run(p):
                     break
 
     logger.info(f"Closing broswer...")
+    await context.close()
     await browser.close()
 
 async def main():
