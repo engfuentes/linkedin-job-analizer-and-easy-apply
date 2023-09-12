@@ -18,7 +18,7 @@ dict_user_opts = load_user_search_save_apply_options()
 async def run(p):
     """Main function"""
     # Create Broswer and apply filters
-    page, browser, context = await create_broswer_page(p)
+    page, browser, context = await create_broswer_page(p, dict_user_opts)
 
     # Get positions and countries
     positions = dict_user_opts['search_positions']

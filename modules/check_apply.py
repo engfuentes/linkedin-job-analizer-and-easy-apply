@@ -256,15 +256,15 @@ def check_experience_requirement(doc, nlp):
 
     # Check the number of years of experience
     for token in doc:
-        if token.text == "experience" or token.text == "experiences":
+        if token.text in ["experience", "experiences", "expertise"]:
             # If it says the number of year of experience that are required
             sentence = token.sent
             
             matcher = Matcher(nlp.vocab)
-            pattern1 = [{"LIKE_NUM": True}, {"ORTH": "+"}, {"LOWER": "years"}] # If it has form 4+ years
-            pattern11 = [{"POS": "PUNCT"}, {"LOWER": "years"}] # If it has form +4 years
-            pattern2 = [{"ORTH": {"NOT_IN": ["-"]}}, {"LIKE_NUM": True}, {"LOWER": "years"}] # If it has format 4 years
-            pattern3 = [{"LIKE_NUM": True}, {"ORTH": "-"} , {"LIKE_NUM": True},{"LOWER": "years"}] # If it has a format of 2-5 Years
+            pattern1 = [{"LIKE_NUM": True}, {"ORTH": "+"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form 4+ years
+            pattern11 = [{"POS": "PUNCT"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form +4 years
+            pattern2 = [{"ORTH": {"NOT_IN": ["-"]}}, {"LIKE_NUM": True}, {"LOWER": {"IN": ["years", "year"]}}] # If it has format 4 years
+            pattern3 = [{"LIKE_NUM": True}, {"ORTH": "-"} , {"LIKE_NUM": True},{"LOWER": {"IN": ["years", "year"]}}] # If it has a format of 2-5 Years
             matcher.add("pattern_+", [pattern1])
             matcher.add("pattern_++", [pattern11])
             matcher.add("pattern_num", [pattern2])
@@ -321,7 +321,7 @@ def check_experience_requirement(doc, nlp):
             
             # If it uses a ADJ + "experience"
             if experience_max_year_threshold < 4:
-                pattern = [{"POS": "ADJ"}, {"LOWER": "experience"}]
+                pattern = [{"POS": "ADJ"}, {"LOWER": {"IN": ["experience", "expertise"]}}]
                 matcher.add("pattern_adj_experience", [pattern])
                 matches = matcher(sentence)
             
@@ -331,20 +331,24 @@ def check_experience_requirement(doc, nlp):
 
                 if string_id == "pattern_adj_experience":
                     adj = span[0]
-                    similarity = max([adj.similarity(nlp("strong")), adj.similarity(nlp("solid"))]) # Check if the adjective is similar to strong
+                    list_adj_check = ["strong", "solid", "extensive"]
+                    # Check if the adjective is similar to the ones of the list, that imply high experience
+                    similarity = max([adj.similarity(nlp(adj_check)) for adj_check in list_adj_check]) 
                     if similarity > 0.7:
                         apply_experience = False
                         reason_not_apply = "Experience"
     
     return apply_experience, reason_not_apply
 
-def check_technology_requirement(doc):
+def check_technology_requirement(doc, nlp):
     """Function to check the technologies required by the job description.
     
     Parameters
     ----------
         doc : spacy doc
             Description to check in spacy doc type
+        nlp : spacy_nlp_model
+            Spacy custom model
     Returns
     -------
         apply_technology : bool
@@ -391,15 +395,29 @@ def check_technology_requirement(doc):
                 
                 # Check if any of the programming languages that you know is in the sentence, as there can be an or
                 # example: proficiency in programming languages such as python, java, or scala
-                for prog_lang in programming_languages_apply:
-                    if prog_lang in sentence.text:
-                            for token in sentence:
-                                if token.text == "or": # Check if there is an "or" word in the sentence
-                                    break
-                    else:
-                        apply_technology = False
-                        list_technologies_no_knowledge.append(entity.text) # Append list of technologies that you dont know
-                        reason_not_apply.append("Programming Language")
+                matcher = Matcher(nlp.vocab)
+                pattern_prog_lan = [{"LOWER": {"IN": programming_languages_apply}}] # If it has form 4+ years
+                pattern_or = [{"ORTH": "or"}]
+                matcher.add("programming language know", [pattern_prog_lan])
+                matcher.add("or", [pattern_or])
+                matches = matcher(sentence)
+                
+                prog_lan = False
+                or_word = False
+                for match_id, start, end in matches:
+                    string_id = nlp.vocab.strings[match_id]  # Get string representation
+
+                    if string_id == "programming language know":
+                        prog_lan = True
+                    if string_id == "or":
+                        or_word = True
+
+                if prog_lan and or_word:
+                    apply_technologies = True
+                else:
+                    apply_technologies = False
+                    list_technologies_no_knowledge.append(entity.text) # Append list of technologies that you dont know
+                    reason_not_apply.append("Programming Language")
 
         # Check if there are programming languages that you dont know
         if entity.label_ == "Backend Web Framework":
@@ -482,7 +500,8 @@ def check_apply_or_not(description):
     apply_exp, reason_not_apply_exp = check_experience_requirement(doc, nlp)
     
     # Check technology requirement
-    apply_tech, reason_not_apply_tech, list_technologies_no_knowledge, list_tags = check_technology_requirement(doc)
+    apply_tech, reason_not_apply_tech, list_technologies_no_knowledge, list_tags = \
+        check_technology_requirement(doc, nlp)
 
     # Check if there is an email in the description
     email = check_if_email(doc,nlp)

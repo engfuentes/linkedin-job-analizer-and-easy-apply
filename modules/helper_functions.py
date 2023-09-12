@@ -158,7 +158,10 @@ def translate_description(description):
     translator = Translator()
     # Detect language and if it is not english then translate
     if translator.detect(description).lang != 'en':
-        description = translator.translate(description, dest='en').text
+        try:
+            description = translator.translate(description, dest='en').text
+        except:
+            return description
     return description
 
 def pre_process_description(description):
@@ -314,6 +317,7 @@ def load_user_search_save_apply_options():
     dict_user_opts["save_to_postgresql_db"] = config_obj.getboolean('options', 'save_to_postgresql_db')
     dict_user_opts["apply_with_easy_apply"] = config_obj.getboolean('options', 'easy_apply')
     dict_user_opts["easy_apply_quest_answ_path"] = config_obj["options"]["easy_apply_quest_answ_path"]
+    dict_user_opts["headless"] = config_obj.getboolean('options', 'headless')
 
     # User search
     dict_user_opts["search_positions"] = config_obj.getlist("user_search","positions")
@@ -321,6 +325,10 @@ def load_user_search_save_apply_options():
 
     # Filters
     dict_user_opts["easy_apply_filter"] = config_obj.getboolean("filters","easy_apply")
+    dict_user_opts["date_posted_filter"] = config_obj["filters"]["date_posted"]
+    dict_user_opts["experience_level_filter"] = config_obj.getlist("filters","experience_level")
+    dict_user_opts["how_to_work_filter"] = config_obj.getlist("filters","how_to_work")
+
 
     return dict_user_opts
 

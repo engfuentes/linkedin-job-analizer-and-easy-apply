@@ -134,8 +134,7 @@ async def check_questions(page, job_inst, dict_user_opts):
                 divs = await page.locator("div.fb-dash-form-element").all()
                 for div in divs:
                     label_text = await div.locator("span[aria-hidden=true]").text_content()
-                    logger.info(f"Label text: {label_text}")
-                    logger.info(f"Fill text: {fill_select_question}")
+
                     if label_text == fill_select_question:
                         await div.get_by_role("combobox").fill(answer) # Fill the answer
                         await page.wait_for_timeout(500)

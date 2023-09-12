@@ -5,13 +5,15 @@ from modules.check_apply import check_apply_or_not
 from modules.easy_apply import easy_apply
 import logging
 
-async def create_broswer_page(p):
+async def create_broswer_page(p, dict_user_opts):
     """Function that creates a broswer, context and page.
     
     Parameters
     ----------
         p : playwright object
             playwright object
+        dict_user_opts : dict
+            Dictionary with the user options of search, save and apply
 
     Returns
     -------
@@ -23,7 +25,7 @@ async def create_broswer_page(p):
             playwright context object
     """
     # Create browser
-    browser = await p.chromium.launch(headless=True)
+    browser = await p.chromium.launch(headless=dict_user_opts["headless"])
     
     # Create a context and load the cookies with the login info
     context = await browser.new_context(storage_state="auth.json")
@@ -97,9 +99,42 @@ async def apply_filers(page, dict_user_opts):
     """
     # Easy Apply filter
     if dict_user_opts["easy_apply_filter"]:
-        await page.wait_for_timeout(1000)
+        await page.wait_for_timeout(500)
         await page.get_by_label("Easy Apply filter.").click()
+        await page.wait_for_timeout(750)
+    
+    # Date posted filter
+    date_posted_filter = dict_user_opts["date_posted_filter"]
+    if date_posted_filter in ['Any time', 'Past month', 'Past week', 'Past 24 hours']:
         await page.wait_for_timeout(1000)
+        await page.locator("button", has_text="Date Posted").click()
+        await page.wait_for_timeout(1000)
+        await page.get_by_text(date_posted_filter, exact=True).click()
+        await page.locator("button", has_text="Date Posted").click()
+    
+    # Experience level filter
+    experience_level_filters = dict_user_opts["experience_level_filter"]
+    if set(experience_level_filters).issubset(['Internship', 'Entry level', 'Associate', 'Mid-Senior level', 'Director', 'Executive']):
+        await page.wait_for_timeout(1000)
+        await page.locator("button", has_text="Experience Level").click()
+        await page.wait_for_timeout(1000)
+        for experience_level_filter in experience_level_filters:
+            await page.get_by_text(experience_level_filter, exact=True).click()
+            await page.wait_for_timeout(1000)
+        await page.wait_for_timeout(1000)
+        await page.locator("button", has_text="Experience Level").click()
+
+    # How to work filter 
+    how_to_work_filters = dict_user_opts["how_to_work_filter"]
+    if set(how_to_work_filters).issubset(['On-site', 'Hybrid', 'Remote']):
+        await page.wait_for_timeout(1000)
+        await page.locator("button", has_text="On-site/remote").click()
+        await page.wait_for_timeout(1000)
+        for how_to_work_filter in how_to_work_filters:
+            await page.locator("span.t-14", has_text=how_to_work_filter).click()
+            await page.wait_for_timeout(1000)
+        await page.wait_for_timeout(1000)
+        await page.locator("button", has_text="On-site/remote").click()
     
     return page
 

@@ -1,4 +1,13 @@
 {
+    "Application Server Software": [
+        "Websphere Application Server",
+        "Apache Tomcat",
+        "WildFly",
+        "Oracle WebLogic Server",
+        "Payara Server",
+        "Jetty",
+        "JBoss"
+    ],
     "Automation": [
         "Apache Airflow",
         "Airflow",
@@ -116,6 +125,13 @@
         "Kimball",
         "Software Testing"
     ],
+    "Document Management": [
+        "Alfresco",
+        "Sharepoint",
+        "Documentum",
+        "Nuxeo",
+        "M-Files"
+    ],
     "ERP": [
         "ERP",
         "SAP",
@@ -210,7 +226,7 @@
         "Nagios",
         "Alertmanager",
         "Grafana",
-        "Loki", 
+        "Loki",
         "Mimir"
     ],
     "Offers": [
