@@ -126,6 +126,111 @@ def transform_words_to_num(span_text):
     if 'ten' in span_text:
         return 10
 
+def analyze_sentences_for_experience(sentence, nlp):
+    """Function to check the experience requirements in a sentence.
+    
+    Parameters
+    ----------
+        sentence : spacy doc
+            Description to check in spacy doc type
+        nlp : spacy_nlp_model
+            Spacy custom model
+    Returns
+    -------
+        apply : bool
+            Boolean to apply or not according to experience requirements
+    """
+    apply_experience = True
+
+    # Load the user options
+    seniority_do_not_apply, experience_max_year_threshold = load_user_experience_to_check()
+
+    matcher = Matcher(nlp.vocab)
+    pattern1 = [{"LIKE_NUM": True}, {"ORTH": "+"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form "4+ years"
+    pattern11 = [{"POS": "PUNCT"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form "+4 years"
+    pattern111 = [{"LIKE_NUM": True}, {"LOWER": "years+"}] # If it has form "4 years+"
+    pattern2 = [{"ORTH": {"NOT_IN": ["-"]}}, {"LIKE_NUM": True}, {"LOWER": {"IN": ["years", "year"]}}] # If it has format "4 years"
+    pattern3 = [{"LIKE_NUM": True}, {"ORTH": "-"} , {"LIKE_NUM": True},{"LOWER": {"IN": ["years", "year"]}}] # If it has a format of "2-5 years"
+    matcher.add("pattern_+", [pattern1])
+    matcher.add("pattern_++", [pattern11])
+    matcher.add("pattern_+++", [pattern111])
+    matcher.add("pattern_num", [pattern2])
+    matcher.add("pattern_range", [pattern3])
+    
+    matches = matcher(sentence)
+
+    for match_id, start, end in matches:
+        string_id = nlp.vocab.strings[match_id]  # Get string representation
+        span = sentence[start:end]  # The matched span
+        number_years = re.findall(r'[0-9]+', span.text)
+        
+        # Check if the numbers are not written as words, otherwise transform
+        if not number_years:
+            number_years = transform_words_to_num(span.text)
+            if type(number_years) is not int:
+                continue
+        else:
+            if len(number_years) == 1:
+                number_years = int(number_years[0])
+            else:
+                list_range = [int(num) for num in number_years]
+                string_id = "pattern_range"
+        
+        if string_id == "pattern_+" or string_id == "pattern_++" or string_id == "pattern_+++":
+            if (number_years + 1) > experience_max_year_threshold and number_years < 12: # The and is to avoid 100 years
+                apply_experience = False
+                return apply_experience
+        
+        if string_id == "pattern_num":
+            if (number_years > experience_max_year_threshold) and number_years < 11: # The and is to avoid 100 years
+                apply_experience = False
+                return apply_experience
+        
+        if string_id == "pattern_range":
+            if min(list_range) > experience_max_year_threshold:
+                apply_experience = False
+                return apply_experience
+    
+    # If it uses a ADJ + "years of experience"
+    if experience_max_year_threshold < 4:
+        pattern = [{"POS": "ADJ"}, {"LOWER": "years"}, {"LOWER": "of"}, {"LOWER": "experience"}]
+        matcher.add("pattern_adj_years of experience", [pattern])
+        matches = matcher(sentence)
+    
+    for match_id, start, end in matches:
+        string_id = nlp.vocab.strings[match_id]  # Get string representation
+        span = sentence[start:end]  # The matched span
+
+        if string_id == "pattern_adj_years of experience":
+            adj = span[0]
+            list_adj_check = ["many", "multiple"]
+            # Check if the adjective is similar to the ones of the list, that imply high experience
+            similarity = max([adj.similarity(nlp(adj_check)) for adj_check in list_adj_check]) 
+            if similarity > 0.7:
+                apply_experience = False
+                return apply_experience
+    
+    # If it uses a ADJ + "experience"
+    if experience_max_year_threshold < 4:
+        pattern = [{"POS": "ADJ"}, {"LOWER": {"IN": ["experience", "expertise"]}}]
+        matcher.add("pattern_adj_experience", [pattern])
+        matches = matcher(sentence)
+    
+    for match_id, start, end in matches:
+        string_id = nlp.vocab.strings[match_id]  # Get string representation
+        span = sentence[start:end]  # The matched span
+
+        if string_id == "pattern_adj_experience":
+            adj = span[0]
+            list_adj_check = ["strong", "solid", "extensive", "deep"]
+            # Check if the adjective is similar to the ones of the list, that imply high experience
+            similarity = max([adj.similarity(nlp(adj_check)) for adj_check in list_adj_check]) 
+            if similarity > 0.7:
+                apply_experience = False
+                return apply_experience
+    
+    return apply_experience
+
 def create_nlp_model():
     """Function that creates the nlp model.
     - Has a custom_boundary to detect : as sentence delimiter
@@ -254,89 +359,42 @@ def check_experience_requirement(doc, nlp):
                     apply_experience = False
                     reason_not_apply = "Seniority"
 
-    # Check the number of years of experience
+    # Initialize lists
+    list_idx = []
+    sentences_to_analyze_idx = []
+    sentences_to_analyze = []
+
+    # Check the number of years of experience in sentences with the word experience or in the following 6 sentences
     for token in doc:
         if token.text in ["experience", "experiences", "expertise"]:
-            # If it says the number of year of experience that are required
+            # Setect a sentence with the word experience or expertise
             sentence = token.sent
-            
-            matcher = Matcher(nlp.vocab)
-            pattern1 = [{"LIKE_NUM": True}, {"ORTH": "+"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form 4+ years
-            pattern11 = [{"POS": "PUNCT"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form +4 years
-            pattern2 = [{"ORTH": {"NOT_IN": ["-"]}}, {"LIKE_NUM": True}, {"LOWER": {"IN": ["years", "year"]}}] # If it has format 4 years
-            pattern3 = [{"LIKE_NUM": True}, {"ORTH": "-"} , {"LIKE_NUM": True},{"LOWER": {"IN": ["years", "year"]}}] # If it has a format of 2-5 Years
-            matcher.add("pattern_+", [pattern1])
-            matcher.add("pattern_++", [pattern11])
-            matcher.add("pattern_num", [pattern2])
-            matcher.add("pattern_range", [pattern3])
-            
-            matches = matcher(sentence)
+    
+            sent_idx = [sent_id for sent_id, sent in enumerate(doc.sents) if sent == sentence] # Get sentence number
+            list_idx.append(sent_idx[0]) # Append to a list of idx to analyze
 
-            for match_id, start, end in matches:
-                string_id = nlp.vocab.strings[match_id]  # Get string representation
-                span = sentence[start:end]  # The matched span
-                number_years = re.findall(r'[0-9]+', span.text)
-                
-                # Check if the numbers are not written as words, otherwise transform
-                if not number_years:
-                    number_years = transform_words_to_num(span.text)
-                else:
-                    if len(number_years) == 1:
-                        number_years = int(number_years[0])
-                    else:
-                        list_range = [int(num) for num in number_years]
-                        string_id = "pattern_range"
-                
-                if string_id == "pattern_+" or string_id == "pattern_++":
-                    if (number_years + 1) > experience_max_year_threshold and number_years < 11: # The and is to avoid 100 years
-                        apply_experience = False
-                        reason_not_apply = "Experience"
-                
-                if string_id == "pattern_num":
-                    if (number_years > experience_max_year_threshold) and number_years < 11: # The and is to avoid 100 years
-                        apply_experience = False
-                        reason_not_apply = "Experience"
-                
-                if string_id == "pattern_range":
-                    if min(list_range) > experience_max_year_threshold:
-                        apply_experience = False
-                        reason_not_apply = "Experience"
-            
-            # If it uses a ADJ + "years of experience"
-            if experience_max_year_threshold < 4:
-                pattern = [{"POS": "ADJ"}, {"LOWER": "years"}, {"LOWER": "of"}, {"LOWER": "experience"}]
-                matcher.add("pattern_adj_years of experience", [pattern])
-                matches = matcher(sentence)
-            
-            for match_id, start, end in matches:
-                string_id = nlp.vocab.strings[match_id]  # Get string representation
-                span = sentence[start:end]  # The matched span
+    # Get the idx of the next 6 sentences and append them to a list
+    for idx in list_idx:
+        for num in list(range(idx, idx + 7)):
+            sentences_to_analyze_idx.append(num)
 
-                if string_id == "pattern_adj_years of experience":
-                    adj = span[0]
-                    similarity = max([adj.similarity(nlp("many")), adj.similarity(nlp("multiple"))]) # Check if the adjective is similar to many
-                    if similarity > 0.7:
-                        apply_experience = False
-                        reason_not_apply = "Experience"
-            
-            # If it uses a ADJ + "experience"
-            if experience_max_year_threshold < 4:
-                pattern = [{"POS": "ADJ"}, {"LOWER": {"IN": ["experience", "expertise"]}}]
-                matcher.add("pattern_adj_experience", [pattern])
-                matches = matcher(sentence)
-            
-            for match_id, start, end in matches:
-                string_id = nlp.vocab.strings[match_id]  # Get string representation
-                span = sentence[start:end]  # The matched span
+    sentences_to_analyze_idx = sorted(set(sentences_to_analyze_idx)) # Get unique idx numbers
 
-                if string_id == "pattern_adj_experience":
-                    adj = span[0]
-                    list_adj_check = ["strong", "solid", "extensive"]
-                    # Check if the adjective is similar to the ones of the list, that imply high experience
-                    similarity = max([adj.similarity(nlp(adj_check)) for adj_check in list_adj_check]) 
-                    if similarity > 0.7:
-                        apply_experience = False
-                        reason_not_apply = "Experience"
+    # Get the sentences instead of their numbers and append to a list
+    for sent_id, sent in enumerate(doc.sents):
+        if sent_id in sentences_to_analyze_idx:
+            sentences_to_analyze.append(sent)
+    
+    # Analyze each sentence
+    list_booleans = []
+    for sentence in sentences_to_analyze:
+        list_booleans.append(analyze_sentences_for_experience(sentence, nlp))
+
+    # If not True, return False
+    if not all(list_booleans):
+        apply_experience = False
+        reason_not_apply = "Experience"
+        return apply_experience, reason_not_apply
     
     return apply_experience, reason_not_apply
 
@@ -396,8 +454,8 @@ def check_technology_requirement(doc, nlp):
                 # Check if any of the programming languages that you know is in the sentence, as there can be an or
                 # example: proficiency in programming languages such as python, java, or scala
                 matcher = Matcher(nlp.vocab)
-                pattern_prog_lan = [{"LOWER": {"IN": programming_languages_apply}}] # If it has form 4+ years
-                pattern_or = [{"ORTH": "or"}]
+                pattern_prog_lan = [{"LOWER": {"IN": programming_languages_apply}}] # If the sentence has a prog_lang to apply
+                pattern_or = [{"ORTH": "or"}] # If the sentence has an "or" word
                 matcher.add("programming language know", [pattern_prog_lan])
                 matcher.add("or", [pattern_or])
                 matches = matcher(sentence)
@@ -413,9 +471,9 @@ def check_technology_requirement(doc, nlp):
                         or_word = True
 
                 if prog_lan and or_word:
-                    apply_technologies = True
+                    apply_technology = True
                 else:
-                    apply_technologies = False
+                    apply_technology = False
                     list_technologies_no_knowledge.append(entity.text) # Append list of technologies that you dont know
                     reason_not_apply.append("Programming Language")
 

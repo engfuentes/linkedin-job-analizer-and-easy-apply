@@ -228,7 +228,7 @@ async def scrap_apply_jobs_page(page, user_search_position, user_search_country,
 
         # Check if there is an Easy Apply Button
         bool_easy_apply_button = await check_easy_apply_button(page)
-        logger.info(f"EasyApply button:{bool_easy_apply_button}")
+        logger.info(f"EasyApply button: {bool_easy_apply_button}")
         if not bool_easy_apply_button and job_inst.apply:
             job_inst.manual_apply = True
 

@@ -29,11 +29,14 @@ def scrap_job(job_html):
     # Get job url
     job.url = "https://www.linkedin.com/" + soup.find("a", href=True)['href']
 
+    # Start class data
+    start_class_data = "job-details-jobs-unified-top-card__"
+
     # Get job name
-    job.position_name = soup.find("h2", class_="jobs-unified-top-card__job-title").get_text().strip()
+    job.position_name = soup.find("h2", class_=f"{start_class_data}job-title").get_text().strip()
 
     # Get company, city, contract_type and number of applicants
-    company_location_applicants = soup.find("div", class_="jobs-unified-top-card__primary-description").get_text().split("·")
+    company_location_applicants = soup.find("div", class_=f"{start_class_data}primary-description").get_text().split("·")
     try:
         job.company = company_location_applicants[0].strip()
     except:
@@ -60,12 +63,12 @@ def scrap_job(job_html):
 
     # Get job contract_time and job_experience
     try:
-        job.contract_time = soup.find("li", class_="jobs-unified-top-card__job-insight").get_text().split("·")[0].strip()
+        job.contract_time = soup.find("li", class_=f"{start_class_data}job-insight").get_text().split("·")[0].strip()
     except:
         job.contract_time = None
 
     try:
-        job.experience = soup.find("li", class_="jobs-unified-top-card__job-insight").get_text().split("·")[1].strip()
+        job.experience = soup.find("li", class_=f"{start_class_data}job-insight").get_text().split("·")[1].strip()
     except:
         job.experience = None
 
@@ -317,6 +320,7 @@ def load_user_search_save_apply_options():
     dict_user_opts["save_to_postgresql_db"] = config_obj.getboolean('options', 'save_to_postgresql_db')
     dict_user_opts["apply_with_easy_apply"] = config_obj.getboolean('options', 'easy_apply')
     dict_user_opts["easy_apply_quest_answ_path"] = config_obj["options"]["easy_apply_quest_answ_path"]
+    dict_user_opts["name_postgre_table"] = config_obj["options"]["name_postgre_table"]
     dict_user_opts["headless"] = config_obj.getboolean('options', 'headless')
 
     # User search
@@ -384,7 +388,7 @@ def save_jobs_information(list_jobs_instances, dict_user_opts):
 
     # Save to postgresql if option = True
     if dict_user_opts["save_to_postgresql_db"]:
-        save_to_postgresql_db(list_jobs_instances)
+        save_to_postgresql_db(list_jobs_instances, dict_user_opts)
 
 def log_exceptions(e, logger):
     """Function that log the exceptions and break the try

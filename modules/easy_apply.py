@@ -187,9 +187,13 @@ async def check_buttons(page, job_inst, dict_user_opts):
         job_inst.could_not_apply_due_to_questions = False
         job_inst.applied = True
         await page.get_by_label("Submit application").click()
-        await page.wait_for_timeout(1500)
-        await page.get_by_role("button", name="Done").click()
-        await page.wait_for_timeout(500)
+        await page.wait_for_timeout(3000)
+        try:
+            await page.get_by_role("button", name="Done").click()
+            await page.wait_for_timeout(2000)
+        except:
+            await page.locator("button[arial-label=Dismiss]").click()
+            await page.wait_for_timeout(2000)
         
         return job_inst
     

@@ -11,7 +11,12 @@
     "Automation": [
         "Apache Airflow",
         "Airflow",
-        "Ansible"
+        "Ansible",
+        "Prefect",
+        "Luigi",
+        "Azkaban",
+        "Oozie",
+        "Kubeflow Pipelines"
     ],
     "Automation Server": [
         "Jenkins",
@@ -74,6 +79,16 @@
         "datawarehouse",
         "Data Lake"
     ],
+    "Data Integration": [
+        "Airbyte",
+        "Apache Nifi",
+        "Talend",
+        "Apache Kafka Connect",
+        "Matillion",
+        "Stitch Data",
+        "StreamSets",
+        "Hevo"
+    ],
     "Data Processing": [
         "Databricks",
         "pyspark",
@@ -85,7 +100,8 @@
         "SageMaker",
         "Apache Flink",
         "Dask",
-        "Apache Beam"
+        "Apache Beam",
+        "Beam"
     ],
     "Database": [
         "Database",
@@ -144,6 +160,7 @@
         "Angular",
         "React",
         "React.js",
+        "ReactJS",
         "Vue",
         "Vue.js",
         "vuejs",
@@ -255,6 +272,8 @@
         "C",
         "C--",
         "C++",
+        "C+ +",
+        "C + +",
         "C#",
         "COBOL",
         "CSS",
@@ -337,7 +356,8 @@
     "Role Experience": [
         "Senior",
         "Junior",
-        "Lead"
+        "Lead",
+        "Intern"
     ],
     "Search Engine": [
         "ElasticSearch",

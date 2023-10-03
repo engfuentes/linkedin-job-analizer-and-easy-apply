@@ -35,6 +35,12 @@ async def run(p):
             # Perform the job_search
             page = await search_job_offers(page, user_search_position, user_search_country, \
                 country_search_count, dict_user_opts)
+            
+            await page.wait_for_timeout(1000)
+
+            # If there arent jobs in the search continue to the next country
+            if await page.locator("h1", has_text="No matching jobs found.").count() == 1:
+                continue
 
             # Get the total number of job pages
             page_number, max_number_pages = await get_total_number_job_pages(page)

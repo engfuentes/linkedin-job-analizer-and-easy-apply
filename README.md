@@ -52,4 +52,4 @@ Login manually to linkedin in the browser. After login close the browser, it wil
 
 7- Run in the terminal to run the script:
 
-    python linkedin_easy_apply.py
+    python linkedin_job_analyzer.py

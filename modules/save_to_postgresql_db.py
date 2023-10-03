@@ -5,13 +5,15 @@ load_dotenv()
 
 logger = logging.getLogger('save_to_postgresql_db')
 
-def save_to_postgresql_db(list_jobs_instances):
+def save_to_postgresql_db(list_jobs_instances, dict_user_opts):
     """Function used to saved the data from the jobs to a PosgreSQL Database
     
     Parameters
     ----------
         list_job_instances : list
-        List of job instances that have to be saved to the database
+            List of job instances that have to be saved to the database
+        dict_user_opt_search_save_apply : dict
+            Dictionary with the user options of search, save and apply 
     Returns
     -------
         apply : bool
@@ -35,9 +37,11 @@ def save_to_postgresql_db(list_jobs_instances):
     # Create cursor
     cur = connection.cursor()
     
+    name_postgre_table = dict_user_opts["name_postgre_table"]
+
     # Create linkedin_jobs table if none exists
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS linkedin_jobs (
+    cur.execute(f"""
+    CREATE TABLE IF NOT EXISTS {name_postgre_table} (
         id serial ,
         search_position VARCHAR(255),
         search_country VARCHAR(255), 
@@ -68,7 +72,7 @@ def save_to_postgresql_db(list_jobs_instances):
     for job in list_jobs_instances:
         # Check if already in Database
         cur.execute(
-            "SELECT * FROM linkedin_jobs WHERE posted_date = %s AND position_name = %s AND company = %s",\
+            f"""SELECT * FROM {name_postgre_table} WHERE posted_date = %s AND position_name = %s AND company = %s""",\
             (job.posted_date, job.position_name, job.company,))
         result = cur.fetchone()
 
@@ -78,7 +82,7 @@ def save_to_postgresql_db(list_jobs_instances):
         
         else:
             # Define insert statement
-            cur.execute("""INSERT INTO linkedin_jobs (
+            cur.execute(f"""INSERT INTO {name_postgre_table} (
                 search_position,
                 search_country, 
                 url,
