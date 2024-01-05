@@ -101,7 +101,8 @@
         "Apache Flink",
         "Dask",
         "Apache Beam",
-        "Beam"
+        "Beam",
+        "Dataiku"
     ],
     "Database": [
         "Database",
@@ -114,18 +115,24 @@
         "MS SQL Server",
         "SQL Server",
         "SSAS",
+        "Hive",
+        "data integration",
+        "data pipelines",
         "SSRS",
         "Oracle Database",
         "Redis",
         "SQLite",
+        "HBase",
         "Apache Cassandra",
+        "Cassandra",
         "MariaDB",
         "SQLAlchemy",
         "Influx",
         "InfluxDB",
         "AWS RDS",
         "Aurora",
-        "NoSQL"
+        "NoSQL",
+        "Apache Hive"
     ],
     "Development Practise": [
         "Scrum",
@@ -173,7 +180,8 @@
         "Aerospike",
         "Couchbase",
         "Hazelcast",
-        "Riak KV"
+        "Riak KV",
+        "Exasol"
     ],
     "Infrastructure": [
         "Terraform",
@@ -181,7 +189,8 @@
         "AWS CloudFormation",
         "Azure Resource Manager",
         "Google Cloud Deployment Manager",
-        "Pulumi"
+        "Pulumi",
+        "Puppet"
     ],
     "Interact Web Servers": [
         "REST API",
@@ -318,7 +327,8 @@
         "Pandas",
         "Selenium",
         "Playwright",
-        "Numpy"
+        "Numpy",
+        "jupyter" 
     ],
     "Role": [
         "Python Developer",
@@ -378,6 +388,7 @@
         "Bitbucket"
     ],
     "Skill": [
+        "APIs",
         "data modeling",
         "data modelling",
         "machine learning",
@@ -394,18 +405,42 @@
         "mlops",
         "big data",
         "AI",
+        "Artificial Intelligence",
         "BI",
         "web development",
         "software development ",
         "SaaS",
+        "IaaS",
+        "PaaS",
+        "data engineering",
+        "orchestration",
+        "data integration",
+        "data processing",
+        "troubleshooting",
+        "optimize",
         "data science",
         "testing",
         "cloud engineering",
         "sas",
-        "data streaming"
+        "data streaming",
+        "problem-solving",
+        "verbal and written communication",
+        "data analysis",
+        "solution-oriented",
+        "statistics",
+        "time series analysis",
+        "anomaly detection",
+        "independent",
+        "structured",
+        "proactive",
+        "iot",
+        "business intelligence",
+        "analytics"
     ],
     "Streaming Platform": [
         "Apache Kafka",
+        "Flink",
+        "Apache Flink",
         "Amazon SQS",
         "Apache ActiveMQ",
         "RabbitMQ",
@@ -423,6 +458,8 @@
         "matplotlib",
         "seaborn",
         "Grafana",
-        "Kibana"
+        "Kibana",
+        "Dash",
+        "dbt"
     ]
 }

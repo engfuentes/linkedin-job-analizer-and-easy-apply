@@ -1,9 +1,10 @@
 from bs4 import BeautifulSoup
 import re, sys, json, logging, configparser
-from modules.item import Job
+from datetime import datetime, timedelta
 import os.path
 from googletrans import Translator
 from modules.save_to_postgresql_db import save_to_postgresql_db
+from modules.item import Job
 
 def scrap_job(job_html):
     """Function to scrap the information of the job
@@ -27,7 +28,8 @@ def scrap_job(job_html):
     soup = soup.find(class_="job-view-layout")
     
     # Get job url
-    job.url = "https://www.linkedin.com/" + soup.find("a", href=True)['href']
+    job_url = "https://www.linkedin.com/" + soup.find("a", href=True)['href']
+    job.url = job_url.split("?")[0]
 
     # Start class data
     start_class_data = "job-details-jobs-unified-top-card__"
@@ -35,49 +37,101 @@ def scrap_job(job_html):
     # Get job name
     job.position_name = soup.find("h2", class_=f"{start_class_data}job-title").get_text().strip()
 
-    # Get company, city, contract_type and number of applicants
-    company_location_applicants = soup.find("div", class_=f"{start_class_data}primary-description").get_text().split("·")
+    # Get company, city, country, number of applicants and posted_date
+    company_location_applicants_selection = soup.find("div", class_=f"{start_class_data}primary-description-without-tagline")
+    company_applicants_location_text = company_location_applicants_selection.get_text().split("·")
+    
     try:
-        job.company = company_location_applicants[0].strip()
+        job.company = company_applicants_location_text[0].strip()
     except:
         job.company = None
+
     try:
-        location = company_location_applicants[1].split("\n")[0].split("(")[0].strip().split(",")
+        # Get the location dirty text, as it contains when it was posted or reposted
+        location_dirty_text = company_applicants_location_text[1]
+        
+        # Get the Undesired text to be deleted in location
+        undesired_text_selection = company_location_applicants_selection.find_all("span", class_="tvm__text")
+        undesired_text_list = [x.get_text() for x in undesired_text_selection]
+
+        # Delete the undesired text from location ("Reposted 2 weeks ago")
+        location = location_dirty_text.replace(undesired_text_list[0],"").strip()
+        
+        # Split the location to check for country and city
+        location = location.split(",")
+        
         if len(location) < 3:
             job.city = location[0]
         if len(location) == 3:
             job.city = location[0]
-            job.country = location[2].replace("Reposted", "").strip()
+            job.country = location[2].strip()
     except:
-        job.city = company_location_applicants[1].split("\n")[0].strip()
+        job.city = None
 
     try:
-        job.contract_type = company_location_applicants[1].split("\n")[0].split("(")[1].split(")")[0].strip()
+        posted_date_text = undesired_text_list[0].replace("Reposted", "").replace("ago", "").strip()
+        job.posted_date = get_aprox_posted_date(posted_date_text)
+    except:
+        job.posted_date = None
+
+    try:
+        job.applicants = int(re.findall(r'\d+',company_applicants_location_text[2])[0])
+    except:
+        job.applicants = None
+
+    # Get job contract_type, contract_time and job_experience
+    contract_details_li = soup.find_all("li", class_=f"{start_class_data}job-insight")[0]
+    contract_details_aria_hidden_spans = contract_details_li.find_all("span", {'aria-hidden': 'true'})
+    contract_details_others_spans = contract_details_li.find_all("span", class_=f"{start_class_data}job-insight-view-model-secondary")
+
+    try:
+        job.contract_type = contract_details_aria_hidden_spans[0].get_text()
     except:
         job.contract_type = None
 
     try:
-        job.applicants = int(re.findall(r'\d+',company_location_applicants[2])[0])
-    except:
-        job.applicants = None
-
-    # Get job contract_time and job_experience
-    try:
-        job.contract_time = soup.find("li", class_=f"{start_class_data}job-insight").get_text().split("·")[0].strip()
+        job.contract_time = contract_details_aria_hidden_spans[1].get_text()
     except:
         job.contract_time = None
 
     try:
-        job.experience = soup.find("li", class_=f"{start_class_data}job-insight").get_text().split("·")[1].strip()
+        job.experience = contract_details_others_spans[1].get_text().strip()
     except:
         job.experience = None
 
     # Get the job description and the post date
     description_dirty = soup.find("article").get_text(separator="\n").replace("About the job", "").strip()
     job.description = "\n".join(description_dirty.split("\n")[:-1]).strip()
-    job.posted_date = description_dirty.split("\n")[-1].replace("Posted on","").replace(".", "").strip()
 
     return job
+
+def get_aprox_posted_date(posted_date_text):
+    """Function that calculates an approximate posted date of the job
+    
+    Parameters
+    ----------
+        posted_date_text : str
+            Text that describes how long time ago the job was posted in Linkedin
+    Returns
+    -------
+        posted_date : str
+            Approximate Posted date in the format "%d-%m-%Y"
+    """
+    current_datetime = datetime.now()
+    number = int(re.findall("\d+", posted_date_text)[0])
+
+    if "hour" in posted_date_text:
+        posted_datetime = current_datetime - timedelta(hours = number)
+    elif "day" in posted_date_text:
+        posted_datetime = current_datetime - timedelta(days = number)
+    elif "week" in posted_date_text:
+        posted_datetime = current_datetime - timedelta(weeks = number)
+    elif "month" in posted_date_text:
+        posted_datetime = current_datetime - timedelta(days = number*30)
+
+    posted_date = posted_datetime.strftime("%d-%m-%Y")
+    
+    return posted_date
 
 def save_job_questions_no_answer(list_questions_no_answer, path):
     """Function to save the questions without answers
@@ -359,6 +413,7 @@ async def get_total_number_job_pages(page):
         max_number_pages : int
             Max number of pages
     """
+    
     # Check all the pages while there is no error
     init_page_number = 1 # Initial page number
 

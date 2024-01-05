@@ -1,5 +1,6 @@
 import psycopg2, os, logging
 from dotenv import load_dotenv
+import hashlib
 
 load_dotenv()
 
@@ -42,7 +43,7 @@ def save_to_postgresql_db(list_jobs_instances, dict_user_opts):
     # Create linkedin_jobs table if none exists
     cur.execute(f"""
     CREATE TABLE IF NOT EXISTS {name_postgre_table} (
-        id serial ,
+        id CHAR(10) PRIMARY KEY,
         search_position VARCHAR(255),
         search_country VARCHAR(255), 
         url TEXT,
@@ -55,7 +56,7 @@ def save_to_postgresql_db(list_jobs_instances, dict_user_opts):
         contract_time VARCHAR(255),
         experience VARCHAR(255),
         description TEXT,
-        posted_date VARCHAR(100),
+        posted_date DATE,
         apply BOOL,
         email TEXT [],
         reason_not_apply TEXT [],
@@ -64,16 +65,17 @@ def save_to_postgresql_db(list_jobs_instances, dict_user_opts):
         easy_apply_questions TEXT [],
         applied BOOL,
         could_not_apply_due_to_questions BOOL,
-        manual_apply BOOL,
-        PRIMARY KEY (posted_date, position_name, company) 
+        manual_apply BOOL
     );
     """)
 
     for job in list_jobs_instances:
+        # Get unique id hassing the job description and shortening the hash
+        unique_id = hashlib.sha1(job.description.encode()).hexdigest()[0:10]
+
         # Check if already in Database
         cur.execute(
-            f"""SELECT * FROM {name_postgre_table} WHERE posted_date = %s AND position_name = %s AND company = %s""",\
-            (job.posted_date, job.position_name, job.company,))
+            f"""SELECT * FROM {name_postgre_table} WHERE id = %s""", (unique_id,))
         result = cur.fetchone()
 
         ## If it is in the Db then log but do not insert
@@ -83,6 +85,7 @@ def save_to_postgresql_db(list_jobs_instances, dict_user_opts):
         else:
             # Define insert statement
             cur.execute(f"""INSERT INTO {name_postgre_table} (
+                id,
                 search_position,
                 search_country, 
                 url,
@@ -127,8 +130,10 @@ def save_to_postgresql_db(list_jobs_instances, dict_user_opts):
                     %s,
                     %s,
                     %s,
+                    %s,
                     %s
                     );""", (
+                unique_id,
                 job.search_position,
                 job.search_country,            
                 job.url,
@@ -136,9 +141,9 @@ def save_to_postgresql_db(list_jobs_instances, dict_user_opts):
                 job.company,
                 job.city,
                 job.country,
-                str(job.contract_type),
+                job.contract_type,
                 job.applicants,
-                str(job.contract_time),
+                job.contract_time,
                 job.experience,
                 job.description,
                 job.posted_date,

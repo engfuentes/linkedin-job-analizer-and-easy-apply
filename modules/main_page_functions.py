@@ -1,9 +1,8 @@
-import asyncio
+import asyncio, logging
 from playwright.async_api import async_playwright
 from modules.helper_functions import scrap_job, log_exceptions, check_easy_apply_button
 from modules.check_apply import check_apply_or_not
 from modules.easy_apply import easy_apply
-import logging
 
 async def create_broswer_page(p, dict_user_opts):
     """Function that creates a broswer, context and page.

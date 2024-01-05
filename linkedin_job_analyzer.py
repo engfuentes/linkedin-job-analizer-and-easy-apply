@@ -10,7 +10,8 @@ logger_config()
 
 logger = logging.getLogger('main')
 
-logger.info(f"Starting main...")
+logger.info("-"*60)
+logger.info("Starting main...")
 
 # Load the user options
 dict_user_opts = load_user_search_save_apply_options()

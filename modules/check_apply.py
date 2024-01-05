@@ -3,7 +3,8 @@ from spacy import displacy
 from spacy.matcher import Matcher
 from spacy.language import Language
 import json, re, logging, configparser
-from modules.helper_functions import translate_description, pre_process_description, tokenize_words, check_similarity
+from modules.helper_functions import translate_description, pre_process_description, \
+    tokenize_words, check_similarity
 
 logger = logging.getLogger('check apply module')
 
@@ -149,7 +150,7 @@ def analyze_sentences_for_experience(sentence, nlp):
     pattern1 = [{"LIKE_NUM": True}, {"ORTH": "+"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form "4+ years"
     pattern11 = [{"POS": "PUNCT"}, {"LOWER": {"IN": ["years", "year"]}}] # If it has form "+4 years"
     pattern111 = [{"LIKE_NUM": True}, {"LOWER": "years+"}] # If it has form "4 years+"
-    pattern2 = [{"ORTH": {"NOT_IN": ["-"]}}, {"LIKE_NUM": True}, {"LOWER": {"IN": ["years", "year"]}}] # If it has format "4 years"
+    pattern2 = [{"LIKE_NUM": True}, {"LOWER": {"IN": ["years", "year"]}}] # If it has format "4 years"
     pattern3 = [{"LIKE_NUM": True}, {"ORTH": "-"} , {"LIKE_NUM": True},{"LOWER": {"IN": ["years", "year"]}}] # If it has a format of "2-5 years"
     matcher.add("pattern_+", [pattern1])
     matcher.add("pattern_++", [pattern11])

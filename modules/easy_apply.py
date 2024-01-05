@@ -70,7 +70,6 @@ async def check_questions(page, job_inst, dict_user_opts):
             missing_questions.append(question)
             # If cannot apply due to missing questions change the bool to True to apply later
             job_inst.could_not_apply_due_to_questions = True
-            job_inst.applied = False
 
     # If the bool is true due to a missing question in the dict save all the missing questions to a json file
     # and return the job_instance
@@ -125,7 +124,7 @@ async def check_questions(page, job_inst, dict_user_opts):
             except Exception as e:
                 job_inst = await exception_questions(e, logger, job_inst, page)
                 return job_inst
- 
+
     # Check if there are fill questions
     if fill_select_questions:
         for fill_select_question in fill_select_questions:
@@ -161,7 +160,7 @@ async def exit_easy_apply(page):
         await page.wait_for_timeout(500)
         await page.get_by_role("button", name="Discard").click()
     except:
-        await page.locator("button[arial-label=Dismiss]").click()
+        await page.locator("button[aria-label=Dismiss]").click()
         await page.wait_for_timeout(500)
         await page.get_by_role("button", name="Discard").click()
 
@@ -184,42 +183,38 @@ async def check_buttons(page, job_inst, dict_user_opts):
     await page.wait_for_timeout(500)
     if (await page.get_by_label("Submit application").count()) == 1:
         # If there is a Submit Application button
-        job_inst.could_not_apply_due_to_questions = False
-        job_inst.applied = True
         await page.get_by_label("Submit application").click()
-        await page.wait_for_timeout(3000)
+        job_inst.applied = True
+        await page.wait_for_timeout(2000)
+
         try:
+            logger.info("Pressing button 1 to close")
             await page.get_by_role("button", name="Done").click()
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(1000)
         except:
-            await page.locator("button[arial-label=Dismiss]").click()
-            await page.wait_for_timeout(2000)
+            logger.info("Pressing button 2 to close")
+            await page.get_by_role("button", name="Dismiss").click()
+            await page.wait_for_timeout(1000)
         
+        return job_inst
+
+    await page.wait_for_timeout(500)
+    
+    # Check if there are questions
+    job_inst = await check_questions(page, job_inst, dict_user_opts)
+
+    # Check if questions could be answered, if not exit the EasyApply Tab and return the instance
+    if job_inst.could_not_apply_due_to_questions == True:
+        await exit_easy_apply(page)
         return job_inst
     
-    await page.wait_for_timeout(500)
-    if (await page.get_by_label("Review").count()) == 1 or (await page.get_by_label("Continue to next step").count()) == 1:
-        # If there is a Review button or a Next Button
-        
-        # Check if there are questions
-        job_inst = await check_questions(page, job_inst, dict_user_opts)
+    # If all was ok and the button was Review
+    if (await page.locator("button[aria-label='Review your application']").count()) == 1:
+        await page.locator("button[aria-label='Review your application']").click()
+    elif (await page.locator("button[aria-label='Continue to next step']").count()) == 1:
+        await page.locator("button[aria-label='Continue to next step']").click()
 
-        # Check if questions could be answered, if not exit the EasyApply Tab and return the instance
-        if job_inst.could_not_apply_due_to_questions == True:
-            try:
-                await exit_easy_apply(page)
-            except:
-                return job_inst
-            return job_inst
-        
-        # If all was ok and the button was Review
-        if (await page.get_by_label("Review").count()) == 1:
-            await page.get_by_label("Review").click()
-
-        if (await page.get_by_label("Continue to next step").count()) == 1:
-            await page.get_by_label("Continue to next step").click()
-
-        return job_inst
+    return job_inst
 
 async def easy_apply(page, job_inst, dict_user_opts):
     """Function that applies to the job with Easy Apply. It is going to check if it has a tab with specific questions
