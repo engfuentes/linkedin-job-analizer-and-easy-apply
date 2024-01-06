@@ -316,28 +316,51 @@ def scrap_easy_apply(questions_html):
             List of questions that require to click a button with options
         fill_select_questions : list
             List of questions that require first to fill and then select an option
+        work_experience : bool
+            True if the tab with the questions is named "Work Experience"
+        education : bool
+            True if the tab with the questions is named "Education"
+        privacy_policy : bool
+            True if the tab with the questions is named "Privacy Policy"
     """
+    # Parse the tab with Beautiful Soup
     soup = BeautifulSoup(questions_html, "lxml")
 
-    questions = soup.find_all("div", class_="jobs-easy-apply-form-section__grouping")
-
+    # Initiate variables
+    work_experience = False
+    education = False
+    privacy_policy = False
     input_questions = []
     select_questions = []
     checkbox_questions = []
     fill_select_questions = []
+    
+    # Check if there is a tab names "Work Experience" or "Education" or "Privacy policy"
+    list_h3 = soup.find_all("h3")
+    for h3 in list_h3:
+        if h3.get_text().strip() == "Work experience":
+            work_experience = True
+        if h3.get_text().strip() == "Education":
+            education = True
+        if h3.get_text().strip() == "Privacy policy":
+            privacy_policy = True
 
-    for i, question in enumerate(questions):
-        if question.find("label", class_="artdeco-text-input--label"):
-            input_questions.append(question.get_text().strip())
-        if question.find("select"):
-            select_questions.append(question.find("span").get_text().strip())
-        if question.find("input", class_="fb-form-element__checkbox"):
-            legend = question.find("legend")
-            checkbox_questions.append(legend.find("span", class_="visually-hidden").get_text().strip())
-        if question.find("label",class_="fb-dash-form-element__label") and not question.find("select"):
-            fill_select_questions.append(question.find("span", class_="visually-hidden").get_text().strip())
+    # Check for the questions
+    if not any([work_experience, education, privacy_policy]):
+        questions = soup.find_all("div", class_="jobs-easy-apply-form-section__grouping")
 
-    return input_questions, select_questions, checkbox_questions, fill_select_questions
+        for i, question in enumerate(questions):
+            if question.find("label", class_="artdeco-text-input--label"):
+                input_questions.append(question.get_text().strip())
+            if question.find("select"):
+                select_questions.append(question.find("span").get_text().strip())
+            if question.find("input", class_="fb-form-element__checkbox"):
+                legend = question.find("legend")
+                checkbox_questions.append(legend.find("span", class_="visually-hidden").get_text().strip())
+            if question.find("label",class_="fb-dash-form-element__label") and not question.find("select"):
+                fill_select_questions.append(question.find("span", class_="visually-hidden").get_text().strip())
+
+    return input_questions, select_questions, checkbox_questions, fill_select_questions, work_experience, education, privacy_policy
 
 def load_json_to_dict(path):
     """Function that loads a json file as dict

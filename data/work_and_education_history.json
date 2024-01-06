@@ -1,0 +1,30 @@
+{
+    "Work Experience": [{"title": "Work Title",
+                         "company": "Company",
+                         "from_month": "September",
+                         "from_year": "2016",
+                         "to_month": "October",
+                         "to_year": "2017",
+                         "city": "Paris",
+                         "description": "Job Description"
+                        },
+                        
+                         {"title": "Work Title",
+                         "company": "Company",
+                         "from_month": "October",
+                         "from_year": "2017",
+                         "to_month": "December",
+                         "to_year": "2020",
+                         "city": "Madrid",
+                         "description": "Job Description"
+                         }],
+
+    "Education": [{"school": "University Name",
+                    "city": "London",
+                    "degree": "Chemical Engineer",
+                    "field_study": "Chemical Engineering",
+                    "from_month": "March",
+                    "from_year": "2011",
+                    "to_month": "November",
+                    "to_year": "2016"}]
+}

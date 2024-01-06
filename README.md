@@ -20,36 +20,38 @@ The webscrapped data can be saved to a json file and/or to a PostgreSQL Database
 
 ## Steps to use it
 
-1- Create a virtual environment for example with pipenv. Open the terminal and write:
+1. Create a virtual environment for example with pipenv. Open the terminal and write:
 
-    pipenv shell
-    pipenv install -r requirements.txt
+        pipenv shell
+        pipenv install -r requirements.txt
 
-2- Install the playwright browsers:
+2. Install the playwright browsers:
 
-    playwright install
+        playwright install
 
-3- Download spaCy large NLP model:
+3. Download spaCy large NLP model:
 
-    python -m spacy download en_core_web_lg 
+        python -m spacy download en_core_web_lg 
 
-4- Generate cookies to login to linkedin:
+4. Generate cookies to login to linkedin:
 
-Run the following code:
+    Run the following code:
 
-    playwright codegen linkedin.com --save-storage=auth.json
+        playwright codegen linkedin.com --save-storage=auth.json
 
-Login manually to linkedin in the browser. After login close the browser, it will save all the information to a file *auth.json*. **DON'T SHARE THIS FILE** (I added to the gitignore file of the repo).
+    Login manually to linkedin in the browser. After login close the browser, it will save all the information to a file *auth.json*. **DON'T SHARE THIS FILE** (I added to the gitignore file of the repo).
 
-5- Choose the options that you want and the words to use in spaCy in *configfile.ini*
+5. Choose the options that you want and the words to use in spaCy in *configfile.ini*
 
-6- If you choose to use a PostgreSQL Database create a .env file with the required env variables:
+6. Fill the *./data/work_and_education_history.json* file with the Work Experience and Education that you want to fill in EasyApply tab for the position that you are applying (in case that is required).
 
-    POSTGRESQL_HOSTNAME = 'localhost'
-    POSTGRESQL_USERNAME = "username"
-    POSTGRESQL_PASSWORD = 'password'
-    POSTGRESQL_DATABASE = 'db_name'
+7. If you choose to use a PostgreSQL Database create a .env file with the required env variables:
 
-7- Run in the terminal to run the script:
+        POSTGRESQL_HOSTNAME = 'localhost'
+        POSTGRESQL_USERNAME = "username"
+        POSTGRESQL_PASSWORD = 'password'
+        POSTGRESQL_DATABASE = 'db_name'
 
-    python linkedin_job_analyzer.py
+8. Run in the terminal to run the script:
+
+        python linkedin_job_analyzer.py
