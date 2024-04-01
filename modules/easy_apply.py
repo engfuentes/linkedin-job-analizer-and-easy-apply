@@ -78,36 +78,48 @@ async def add_work_history(page, work_history, job_inst):
             # Click add Button
             await page.locator("button.jobs-easy-apply-repeatable-groupings__add-button").click()
 
+            # Get the last work card
+            work_card_list = await page.locator("div.artdeco-card > div.pb4").all()
+            work_card = work_card_list[-1]
+           
             # Fill the title
-            await page.locator("label").filter(has_text="Your title").fill(work_experience["title"])
+            await work_card.locator("label").filter(has_text="Your title").fill(work_experience["title"])
             await page.wait_for_timeout(300)
 
             # Fill the company
-            await page.locator("label").filter(has_text="Company").fill(work_experience["company"])
+            #await page.locator("label").filter(has_text="Company").fill(work_experience["company"])
+            await work_card.get_by_text("Company", exact=True).fill(work_experience["company"])
             await page.wait_for_timeout(300)
         
+            # If current work the click checkbox
+            if work_experience["current_work"] == "True":
+                await work_card.locator(f'div > label[data-test-text-selectable-option__label="I currently work here"]').click()
+                await page.wait_for_timeout(300)
+
             # Select from
-            await page.get_by_label("Month of From").select_option(work_experience["from_month"])
-            await page.get_by_label("Year of From").select_option(work_experience["from_year"])
+            await work_card.get_by_label("Month of From").select_option(work_experience["from_month"])
+            await work_card.get_by_label("Year of From").select_option(work_experience["from_year"])
             await page.wait_for_timeout(300)
 
             # Select to
-            await page.get_by_label("Month of To").select_option(work_experience["to_month"])
-            await page.get_by_label("Year of To").select_option(work_experience["to_year"])
-            await page.wait_for_timeout(300)
+            if work_experience["current_work"] == "False":
+                await work_card.get_by_label("Month of To").select_option(work_experience["to_month"])
+                await work_card.get_by_label("Year of To").select_option(work_experience["to_year"])
+                await page.wait_for_timeout(300)
 
             # Fill Select City
-            combobox_list = await page.get_by_role("combobox").all()
-            select_city = combobox_list[-1]
+            if work_experience["city"] != "None":
+                combobox_list = await work_card.get_by_role("combobox").all()
+                select_city = combobox_list[-1]
 
-            await select_city.fill(work_experience["city"]) # Fill the Answer
-            await page.wait_for_timeout(500)
-            await select_city.press("ArrowDown") # Select from the list
-            await select_city.press("Enter")
-            await page.wait_for_timeout(300)
+                await select_city.fill(work_experience["city"]) # Fill the Answer
+                await page.wait_for_timeout(500)
+                await select_city.press("ArrowDown") # Select from the list
+                await select_city.press("Enter")
+                await page.wait_for_timeout(300)
 
             # Fill Job Description
-            await page.locator("label").filter(has_text="Description").fill(work_experience["description"])
+            await work_card.locator("label").filter(has_text="Description").fill(work_experience["description"])
             await page.wait_for_timeout(300)
 
             # Save the Work Experience
@@ -173,6 +185,41 @@ async def add_education_history(page, education_history, job_inst):
         job_inst = await exception_questions(e, logger, job_inst, page)
         return job_inst
 
+def add_answers_questions_work_visa(easy_apply_quest_answ, dict_user_opts, country):
+    """Function that adds to the easy_apply_quest_answ dict some answers about the work visa conditions,
+    depending the country of the job position
+    
+    Parameters
+    ----------
+        easy_apply_quest_answ : dict
+            Dictionary with the questions and answers for easy apply
+        dict_user_opts : dict
+            Dictionary with the user options of search, save and apply
+        country : str
+            Country of the job position
+    Returns
+    -------
+        easy_apply_quest_answ : dict
+            Dictionary with the questions and answers for easy apply
+    """
+    # Get the list of countries that you dont need a work visa to work
+    list_countries_no_work_visa = dict_user_opts["countries_no_visa"]
+
+    if country in list_countries_no_work_visa:
+        easy_apply_quest_answ["Do you need sponsorship for a new position?"] = "No",
+        easy_apply_quest_answ["Will you now or in the future require sponsorship for employment visa status?"] = "No",
+        easy_apply_quest_answ["Do you need visa sponsorship to work in this location?"] = "No",
+        easy_apply_quest_answ["Are you authorized to work in the job's country?"] = "Yes",
+        easy_apply_quest_answ[f"Are you legally authorized to work in {country}?"] = "Yes",
+    else:
+        easy_apply_quest_answ["Do you need sponsorship for a new position?"] = "Yes",
+        easy_apply_quest_answ["Will you now or in the future require sponsorship for employment visa status?"] = "Yes",
+        easy_apply_quest_answ["Do you need visa sponsorship to work in this location?"] = "Yes",
+        easy_apply_quest_answ["Are you authorized to work in the job's country?"] = "No",
+        easy_apply_quest_answ[f"Are you legally authorized to work in {country}?"] = "No",
+
+    return easy_apply_quest_answ
+
 async def check_questions(page, job_inst, dict_user_opts):
     """Function that checks if there are questions in the EasyApply tab. If there are questions
     it checks if it has the answers, if not, it addes them to a list that is saved to a json file
@@ -208,6 +255,9 @@ async def check_questions(page, job_inst, dict_user_opts):
     # Add to the job instance the Easy Apply questions
     job_inst.easy_apply_questions = easy_apply_questions
 
+    # Add visa related questions to the easy_apply questions and answers dict
+    easy_apply_quest_answ = add_answers_questions_work_visa(easy_apply_quest_answ, dict_user_opts, job_inst.search_country)
+
     # Check if all the questions are in the dict with the answers, if not append the missing ones to the list
     for question in easy_apply_questions:
         if question not in easy_apply_quest_answ.keys():
@@ -222,12 +272,15 @@ async def check_questions(page, job_inst, dict_user_opts):
         logger.info(f"Questions without answers: {missing_questions}")
         return job_inst
 
+    # Locate only the EasyApply content
+    easy_apply_tab = page.locator("div.jobs-easy-apply-content")
+
     # If there are input questions, fill them
     if input_questions:
         for input_question in input_questions:
             try:
                 answer = easy_apply_quest_answ[input_question]
-                await page.get_by_text(input_question).fill(answer)
+                await easy_apply_tab.get_by_text(input_question).fill(answer)
                 await page.wait_for_timeout(300)
             except Exception as e:
                 job_inst = await exception_questions(e, logger, job_inst, page)
@@ -238,7 +291,7 @@ async def check_questions(page, job_inst, dict_user_opts):
         for select_question in select_questions:
             try:
                 answer = easy_apply_quest_answ[select_question]
-                await page.get_by_label(select_question).select_option(answer)
+                await easy_apply_tab.get_by_label(select_question).select_option(answer)
                 await page.wait_for_timeout(300)
             except Exception as e:
                 job_inst = await exception_questions(e, logger, job_inst, page)
@@ -246,7 +299,7 @@ async def check_questions(page, job_inst, dict_user_opts):
     
     # If there are checkbox questions, check them            
     if checkbox_questions:
-        fieldsets = await page.locator("fieldset").all() # Get all the fieldsets with the checkbox questions
+        fieldsets = await easy_apply_tab.locator("fieldset").all() # Get all the fieldsets with the checkbox questions
         for checkbox_question in checkbox_questions:
             try:
                 answer = easy_apply_quest_answ[checkbox_question]
@@ -277,7 +330,6 @@ async def check_questions(page, job_inst, dict_user_opts):
                 divs = await page.locator("div.fb-dash-form-element").all()
                 for div in divs:
                     label_text = await div.locator("span[aria-hidden=true]").text_content()
-
                     if label_text == fill_select_question:
                         await div.get_by_role("combobox").fill(answer) # Fill the answer
                         await page.wait_for_timeout(500)
@@ -285,9 +337,21 @@ async def check_questions(page, job_inst, dict_user_opts):
                         await div.locator("span[aria-hidden=true]").press("Enter")
                         break
                 await page.wait_for_timeout(300)
-            except Exception as e:
-                job_inst = await exception_questions(e, logger, job_inst, page)
-                return job_inst
+            except:
+                try:
+                    answer = easy_apply_quest_answ[fill_select_question]
+                    label_text = await page.locator("div.fb-dash-form-element").locator("span[aria-hidden=true]").text_content()
+                    div = page.locator("div.fb-dash-form-element")
+                    if label_text == fill_select_question:
+                        await div.get_by_role("combobox").fill(answer) # Fill the answer
+                        await page.wait_for_timeout(500)
+                        await div.locator("span[aria-hidden=true]").press("ArrowDown")
+                        await div.locator("span[aria-hidden=true]").press("Enter")
+                    await page.wait_for_timeout(300)
+                
+                except Exception as e:
+                    job_inst = await exception_questions(e, logger, job_inst, page)
+                    return job_inst
 
     # Check for Work Experience Tab. If exists then delete all the jobs and fill with new
     if work_experience:
@@ -332,7 +396,7 @@ async def exit_easy_apply(page):
         await page.wait_for_timeout(500)
         await page.get_by_role("button", name="Discard").click()
     except:
-        await page.locator("button[aria-label=Dismiss]").click()
+        await page.locator("div.jobs-easy-apply-modal > button[aria-label=Dismiss]").click()
         await page.wait_for_timeout(500)
         await page.get_by_role("button", name="Discard").click()
 

@@ -267,8 +267,43 @@ def create_nlp_model():
     
     return nlp
 
-def check_language_requirement(doc, nlp):
+def check_position_title(position_name, nlp):
+    """Function to check the experience or seniority required by the job title.
     
+    Parameters
+    ----------
+        position_name : str
+            Position title to check
+        nlp : spacy_nlp_model
+            Spacy custom model
+    Returns
+    -------
+        apply_experience : bool
+            Boolean to apply or not according to experience requirements
+        reason_not_apply : str
+            Reason not to apply if there is one
+    """
+    apply_experience = True
+    reason_not_apply = ""
+
+    # Create document with the description
+    doc = nlp(position_name.lower())
+
+    # Load the user options
+    seniority_do_not_apply, experience_max_year_threshold = load_user_experience_to_check()
+
+    # Check the seniority
+    for entity in doc.ents:
+        # Check the Role Experience Entity if there is one. We pass which ones not to apply to, for example "senior"
+        if entity.label_ == "Role Experience":
+            for seniority in seniority_do_not_apply:
+                if entity.text == seniority.lower():
+                    apply_experience = False
+                    reason_not_apply = "Seniority"
+
+    return apply_experience, reason_not_apply
+
+def check_language_requirement(doc, nlp):
     """Function to check the language requirement.
     
     Parameters
@@ -340,7 +375,7 @@ def check_experience_requirement(doc, nlp):
             Spacy custom model
     Returns
     -------
-        apply : bool
+        apply_experience : bool
             Boolean to apply or not according to experience requirements
         reason_not_apply : str
             Reason not to apply if there is one
@@ -520,13 +555,17 @@ def check_if_email(doc,nlp):
     
     return email
 
-def check_apply_or_not(description):
+def check_apply_or_not(description, position_name, nlp):
     """Function to decide if apply for the job or not
     
     Parameters
     ----------
         description : str
             Description to check
+        position_name : str
+            Position title to check
+        nlp : spacy nlp model
+            Spacy nlp model to be used
     Returns
     -------
         apply : bool
@@ -546,17 +585,18 @@ def check_apply_or_not(description):
     # Pre-process the description to use in spacy
     clean_description = pre_process_text(description)
     
-    # Create model
-    nlp = create_nlp_model()
-
-    # Create document
+    # Create document with the description
     doc = nlp(clean_description)
 
     # Check language requirement
     apply_lang, reason_not_apply_lang = check_language_requirement(doc, nlp)
 
     # Check experience requirement
-    apply_exp, reason_not_apply_exp = check_experience_requirement(doc, nlp)
+    # Check the title
+    apply_exp, reason_not_apply_exp = check_position_title(position_name, nlp)
+    # If the title is ok, then check for the experience in the description
+    if apply_exp:
+        apply_exp, reason_not_apply_exp = check_experience_requirement(doc, nlp)
     
     # Check technology requirement
     apply_tech, reason_not_apply_tech, list_technologies_no_knowledge, list_tags = \

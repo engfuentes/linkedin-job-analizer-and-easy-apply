@@ -50,20 +50,22 @@
         "Google Cloud",
         "AWS S3",
         "S3",
-        "BigQuery",
         "EC2",
         "ECS",
         "CloudWatch",
         "cloud",
         "Azure Functions",
-        "AWS Lambda"
+        "AWS Lambda",
+        "lambda",
+        "Glue"
     ],
     "Cloud Warehouse": [
         "Snowflake",
         "Redshift",
         "BigQuery",
         "Microsoft Azure Synapse Analytics",
-        "Athena"
+        "Athena",
+        "Teradata"
     ],
     "Container": [
         "Docker",
@@ -87,7 +89,9 @@
         "Matillion",
         "Stitch Data",
         "StreamSets",
-        "Hevo"
+        "Hevo",
+        "Datastage",
+        "PowerCenter"
     ],
     "Data Processing": [
         "Databricks",
@@ -121,6 +125,8 @@
         "SSRS",
         "Oracle Database",
         "Redis",
+        "Cosmos DB",
+        "CosmosDB",
         "SQLite",
         "HBase",
         "Apache Cassandra",
@@ -235,6 +241,7 @@
     "Machine Learning": [
         "Keras",
         "TensorFlow",
+        "TF",
         "PyTorch",
         "scikit-learn",
         "spaCy"
@@ -271,7 +278,11 @@
         "CCNA",
         "Cisco Certified Network Associate",
         "CCIP",
-        "Cisco Certified Internetwork Professional"
+        "Cisco Certified Internetwork Professional",
+        "Azure Fundamentals",
+        "Azure Data Engineer Associate",
+        "Azure Solution Architect Expert",
+        "Databricks Certified Developer"
     ],
     "Programming Language": [
         "A# .NET",
@@ -328,7 +339,8 @@
         "Selenium",
         "Playwright",
         "Numpy",
-        "jupyter" 
+        "jupyter",
+        "Scipy" 
     ],
     "Role": [
         "Python Developer",
@@ -367,7 +379,8 @@
         "Senior",
         "Junior",
         "Lead",
-        "Intern"
+        "Intern",
+        "Principal"
     ],
     "Search Engine": [
         "ElasticSearch",
@@ -453,6 +466,7 @@
         "Microstrategy",
         "QlikView",
         "Qlik Sense",
+        "qliksense",
         "Looker",
         "Tableau",
         "matplotlib",

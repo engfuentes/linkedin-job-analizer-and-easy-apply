@@ -28,7 +28,7 @@ def scrap_job(job_html):
     soup = soup.find(class_="job-view-layout")
     
     # Get job url
-    job_url = "https://www.linkedin.com/" + soup.find("a", href=True)['href']
+    job_url = "https://www.linkedin.com" + soup.find("a", href=True)['href']
     job.url = job_url.split("?")[0]
 
     # Start class data
@@ -118,7 +118,7 @@ def get_aprox_posted_date(posted_date_text):
             Approximate Posted date in the format "%d-%m-%Y"
     """
     current_datetime = datetime.now()
-    number = int(re.findall("\d+", posted_date_text)[0])
+    number = int(re.findall(r'\d+', posted_date_text)[0])
 
     if "hour" in posted_date_text:
         posted_datetime = current_datetime - timedelta(hours = number)
@@ -399,6 +399,9 @@ def load_user_search_save_apply_options():
     dict_user_opts["easy_apply_quest_answ_path"] = config_obj["options"]["easy_apply_quest_answ_path"]
     dict_user_opts["name_postgre_table"] = config_obj["options"]["name_postgre_table"]
     dict_user_opts["headless"] = config_obj.getboolean('options', 'headless')
+
+    # No visa countries
+    dict_user_opts["countries_no_visa"] = config_obj.getlist("countries_no_visa","countries")
 
     # User search
     dict_user_opts["search_positions"] = config_obj.getlist("user_search","positions")

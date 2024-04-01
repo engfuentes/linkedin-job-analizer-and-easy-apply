@@ -4,6 +4,7 @@ from modules.helper_functions import load_user_search_save_apply_options, logger
     get_total_number_job_pages, save_jobs_information, log_exceptions
 from modules.main_page_functions import create_broswer_page, search_job_offers,\
     scrap_apply_jobs_page, search_job_offers
+from modules.check_apply import create_nlp_model
 
 # Configure logger
 logger_config()
@@ -15,6 +16,9 @@ logger.info("Starting main...")
 
 # Load the user options
 dict_user_opts = load_user_search_save_apply_options()
+
+# Create NLP model to analyze descriptions and titles
+nlp = create_nlp_model()
 
 async def run(p):
     """Main function"""
@@ -57,7 +61,7 @@ async def run(p):
                     
                     # Scrap, decide if apply and apply
                     list_jobs_instances = await scrap_apply_jobs_page(page, user_search_position, user_search_country,\
-                                            dict_user_opts)
+                                            dict_user_opts, nlp)
 
                     save_jobs_information(list_jobs_instances, dict_user_opts)
 
