@@ -225,7 +225,7 @@ async def scrap_apply_jobs_page(page, user_search_position, user_search_country,
         # instead of EasyApply, and Reasons not to apply and job tags 
         job_inst.apply, job_inst.email, job_inst.reason_not_apply, \
         job_inst.list_tech_no_knowledge, job_inst.list_tags,  \
-        job_inst.description = check_apply_or_not(job_inst.description, job_inst.position_name, nlp)
+        job_inst.description, job_inst.description_lang = check_apply_or_not(job_inst.description, job_inst.position_name, nlp)
 
         # Check if there is an Easy Apply Button
         bool_easy_apply_button = await check_easy_apply_button(page)

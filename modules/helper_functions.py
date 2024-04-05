@@ -210,16 +210,21 @@ def translate_description(description):
     -------
         description : str
             Translated description if was not in english
+        description_lang : str
+            Original language of the description
     """
     
     translator = Translator()
     # Detect language and if it is not english then translate
-    if translator.detect(description).lang != 'en':
+    description_lang = translator.detect(description).lang
+    
+    if description_lang != 'en':
         try:
             description = translator.translate(description, dest='en').text
         except:
             return description
-    return description
+    
+    return description, description_lang
 
 def pre_process_description(description):
     """Function to clean the description. Replace some symbols and add a stop if there is a newline
@@ -322,6 +327,8 @@ def scrap_easy_apply(questions_html):
             True if the tab with the questions is named "Education"
         privacy_policy : bool
             True if the tab with the questions is named "Privacy Policy"
+        resume : bool
+            True if the tab has the button to upload the CV
     """
     # Parse the tab with Beautiful Soup
     soup = BeautifulSoup(questions_html, "lxml")
@@ -330,6 +337,7 @@ def scrap_easy_apply(questions_html):
     work_experience = False
     education = False
     privacy_policy = False
+    resume = False
     input_questions = []
     select_questions = []
     checkbox_questions = []
@@ -344,6 +352,12 @@ def scrap_easy_apply(questions_html):
             education = True
         if h3.get_text().strip() == "Privacy policy":
             privacy_policy = True
+
+    # Check if there is a button (input) to upload the cv
+    resume_upload_button = soup.find("input", id=re.compile("^jobs-document-upload-file-input-upload-resume"))
+
+    if resume_upload_button:
+        resume = True
 
     # Check for the questions
     if not any([work_experience, education, privacy_policy]):
@@ -360,7 +374,7 @@ def scrap_easy_apply(questions_html):
             if question.find("label",class_="fb-dash-form-element__label") and not question.find("select"):
                 fill_select_questions.append(question.find("span", class_="visually-hidden").get_text().strip())
 
-    return input_questions, select_questions, checkbox_questions, fill_select_questions, work_experience, education, privacy_policy
+    return input_questions, select_questions, checkbox_questions, fill_select_questions, work_experience, education, privacy_policy, resume
 
 def load_json_to_dict(path):
     """Function that loads a json file as dict

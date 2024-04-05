@@ -185,6 +185,52 @@ async def add_education_history(page, education_history, job_inst):
         job_inst = await exception_questions(e, logger, job_inst, page)
         return job_inst
 
+async def click_correct_cv(cvs, language):
+    """Function used click the correct cv from a list of cvs elements
+    
+    Parameters
+    ----------
+        cvs : List of playwright objects (CVs)
+            list
+        language : str
+            Correct language to choose. The name must be present in the cv file
+    """       
+    for cv in cvs:
+        cv_text = await cv.inner_text()
+        if language.lower() in cv_text.lower():
+            # Click the cv if it is not selected
+            if await cv.get_attribute('aria-label') != "Selected":
+                await cv.click()
+                break
+
+async def choose_cv(page, job_inst):
+    """Function used find and choose the proper cv
+    
+    Parameters
+    ----------
+        page : playwright object
+            Playwright page
+        job_inst : job instance
+            Instance of the job that is being processed
+    """    
+    # Get the job description language
+    description_lang = job_inst.description_lang
+
+    # Click button to show more resumes
+    if (await page.locator("button[aria-label='Show more resumes']").count()) == 1:
+        await page.locator("button[aria-label='Show more resumes']").click()
+
+    # Get all the resume elements
+    cvs = await page.locator("div.jobs-document-upload-redesign-card__container").all()
+
+    # Click the proper CV depending the language
+    if description_lang == "es":
+        await click_correct_cv(cvs, "Espanol")
+    elif description_lang == "it":
+        await click_correct_cv(cvs, "Italiano")
+    else:
+        await click_correct_cv(cvs, "English")    
+
 def add_answers_questions_work_visa(easy_apply_quest_answ, dict_user_opts, country):
     """Function that adds to the easy_apply_quest_answ dict some answers about the work visa conditions,
     depending the country of the job position
@@ -206,17 +252,17 @@ def add_answers_questions_work_visa(easy_apply_quest_answ, dict_user_opts, count
     list_countries_no_work_visa = dict_user_opts["countries_no_visa"]
 
     if country in list_countries_no_work_visa:
-        easy_apply_quest_answ["Do you need sponsorship for a new position?"] = "No",
-        easy_apply_quest_answ["Will you now or in the future require sponsorship for employment visa status?"] = "No",
-        easy_apply_quest_answ["Do you need visa sponsorship to work in this location?"] = "No",
-        easy_apply_quest_answ["Are you authorized to work in the job's country?"] = "Yes",
-        easy_apply_quest_answ[f"Are you legally authorized to work in {country}?"] = "Yes",
+        easy_apply_quest_answ["Do you need sponsorship for a new position?"] = "No"
+        easy_apply_quest_answ["Will you now or in the future require sponsorship for employment visa status?"] = "No"
+        easy_apply_quest_answ["Do you need visa sponsorship to work in this location?"] = "No"
+        easy_apply_quest_answ["Are you authorized to work in the job's country?"] = "Yes"
+        easy_apply_quest_answ[f"Are you legally authorized to work in {country}?"] = "Yes"
     else:
-        easy_apply_quest_answ["Do you need sponsorship for a new position?"] = "Yes",
-        easy_apply_quest_answ["Will you now or in the future require sponsorship for employment visa status?"] = "Yes",
-        easy_apply_quest_answ["Do you need visa sponsorship to work in this location?"] = "Yes",
-        easy_apply_quest_answ["Are you authorized to work in the job's country?"] = "No",
-        easy_apply_quest_answ[f"Are you legally authorized to work in {country}?"] = "No",
+        easy_apply_quest_answ["Do you need sponsorship for a new position?"] = "Yes"
+        easy_apply_quest_answ["Will you now or in the future require sponsorship for employment visa status?"] = "Yes"
+        easy_apply_quest_answ["Do you need visa sponsorship to work in this location?"] = "Yes"
+        easy_apply_quest_answ["Are you authorized to work in the job's country?"] = "No"
+        easy_apply_quest_answ[f"Are you legally authorized to work in {country}?"] = "No"
 
     return easy_apply_quest_answ
 
@@ -249,7 +295,7 @@ async def check_questions(page, job_inst, dict_user_opts):
     questions_html = await page.content()
     # Scrap the html to check if there are questions with 4 types: Input, Select, Checkbox or Fill and Select
     input_questions, select_questions, checkbox_questions, fill_select_questions, \
-                                      work_experience, education, privacy_policy = scrap_easy_apply(questions_html)
+                                      work_experience, education, privacy_policy, resume = scrap_easy_apply(questions_html)
     # Make one list of the 4 lists
     easy_apply_questions = list(itertools.chain(input_questions, select_questions, checkbox_questions, fill_select_questions))
     # Add to the job instance the Easy Apply questions
@@ -280,7 +326,7 @@ async def check_questions(page, job_inst, dict_user_opts):
         for input_question in input_questions:
             try:
                 answer = easy_apply_quest_answ[input_question]
-                await easy_apply_tab.get_by_text(input_question).fill(answer)
+                await easy_apply_tab.get_by_text(input_question, exact=True).fill(answer)
                 await page.wait_for_timeout(300)
             except Exception as e:
                 job_inst = await exception_questions(e, logger, job_inst, page)
@@ -381,6 +427,11 @@ async def check_questions(page, job_inst, dict_user_opts):
         await page.locator(f'div > label[data-test-text-selectable-option__label="I Agree Terms & Conditions"]').click()
         page.wait_for_timeout(300)
 
+    # Check if the CV can be chosen
+    if resume:
+        # Choose the correct CV
+        await choose_cv(page, job_inst)
+
     return job_inst
 
 async def exit_easy_apply(page):
@@ -417,6 +468,19 @@ async def check_buttons(page, job_inst, dict_user_opts):
             Instance of the job that is being processed
     """
     await page.wait_for_timeout(500)
+    
+    # Check if there are questions
+    job_inst = await check_questions(page, job_inst, dict_user_opts)
+
+    # Check if questions could be answered, if not exit the EasyApply Tab and return the instance
+    if job_inst.could_not_apply_due_to_questions == True:
+        await exit_easy_apply(page)
+        return job_inst
+    
+    await page.wait_for_timeout(500)
+
+    # If all was ok and then click "Submit application", "Review" or "Next"
+
     if (await page.get_by_label("Submit application").count()) == 1:
         # If there is a Submit Application button
         await page.get_by_label("Submit application").click()
@@ -434,18 +498,7 @@ async def check_buttons(page, job_inst, dict_user_opts):
         
         return job_inst
 
-    await page.wait_for_timeout(500)
-    
-    # Check if there are questions
-    job_inst = await check_questions(page, job_inst, dict_user_opts)
-
-    # Check if questions could be answered, if not exit the EasyApply Tab and return the instance
-    if job_inst.could_not_apply_due_to_questions == True:
-        await exit_easy_apply(page)
-        return job_inst
-    
-    # If all was ok and the button was Review
-    if (await page.locator("button[aria-label='Review your application']").count()) == 1:
+    elif (await page.locator("button[aria-label='Review your application']").count()) == 1:
         await page.locator("button[aria-label='Review your application']").click()
     elif (await page.locator("button[aria-label='Continue to next step']").count()) == 1:
         await page.locator("button[aria-label='Continue to next step']").click()

@@ -55,3 +55,9 @@ The webscrapped data can be saved to a json file and/or to a PostgreSQL Database
 8. Run in the terminal to run the script:
 
         python linkedin_job_analyzer.py
+
+## Added support to CVs in different languages
+
+Now the script support multiple languages CVs (for now Spanish, Italian and English). The script will choose the CV language according to the job description language. If the description is in Spanish or Italian it will use the CVs in these languages, otherwise it will apply using the CV in English.
+
+You have to upload the CVs to https://www.linkedin.com/jobs/application-settings/ with the languages names in each CV file name. For example: "CV - Name - Espanol" or "CV - Name - Italiano" or "CV - Name - English" 

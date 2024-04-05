@@ -88,10 +88,13 @@ def pre_process_text(description):
     -------
         description : str
             Ready to use description
+        description_lang : str
+            Original language of the description
     """
-    description = translate_description(description)
+    description, description_lang = translate_description(description)
     description = pre_process_description(description)
-    return description
+    
+    return description, description_lang
 
 def transform_words_to_num(span_text):
     """Function that transforms a word number in an int
@@ -578,12 +581,14 @@ def check_apply_or_not(description, position_name, nlp):
             List of the technologies that you dont have knowledge if there is any
         clean_description : str
             Translated and cleaned description of the job
+        description_lang : str
+            Original language of the description
     """
     
     apply = True
 
-    # Pre-process the description to use in spacy
-    clean_description = pre_process_text(description)
+    # Pre-process the description to use in spacy and get the original description lang
+    clean_description, description_lang = pre_process_text(description)
     
     # Create document with the description
     doc = nlp(clean_description)
@@ -621,4 +626,4 @@ def check_apply_or_not(description, position_name, nlp):
     
     reason_not_apply = reason_not_apply_tech
     
-    return apply, email, reason_not_apply, list_technologies_no_knowledge, list_tags, clean_description
+    return apply, email, reason_not_apply, list_technologies_no_knowledge, list_tags, clean_description, description_lang

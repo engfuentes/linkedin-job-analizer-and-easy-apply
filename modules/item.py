@@ -12,6 +12,7 @@ class Job():
         self.contract_time = None
         self.experience = None
         self.description = None
+        self.description_lang = None
         self.posted_date = None
         self.apply = None
         self.email = None
